@@ -101,7 +101,7 @@ li{
 	z-index: 2
 }
 .object_container {
-	text-size: 30px;
+	text-size: 60px;
 	text-color: rgb(35,201,60);
 	position: fixed;
 	width: 800px;
