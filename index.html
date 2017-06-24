@@ -1,0 +1,66 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <script src="http://api-maps.yandex.ru/2.0/?load=package.full&lang=ru-RU" type="text/javascript"></script>
+	<script src="map.js" type="text/javascript"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <link href="style.css" rel="stylesheet" type="text/css">
+	<title>crimea-build</title>
+  </head>
+  <body>
+    <div class="hat_container">
+	  <div id="logo"><img src="logo_text.png" height="46px"></div>
+	  <div id="login_field" width="200px"><img src="profile_icon.png" height="24px">  StAn
+	  		<script>
+			var field_open = false;
+			$("#login_field").click(function(){
+			if(field_open == false){
+			$("#login_field_1").animate({height: "150px"});
+			field_open = true;
+			}
+			else {
+			$("#login_field_1").animate({height: "0px"});
+			field_open = false;
+			}
+			});
+			</script>
+	  </div>
+1	</div>
+	<div width="200px">
+		<ul id="login_field_1">
+			<li><a href="#">Ты</a></li><br/>
+			<li><a href="#">пидор</a></li>
+		</ul>
+	</div>
+	<div class="menu_container">
+	  <ul class="menu_high">
+		<li><a href="help.html" class="button" id="filter">это</a></li><br/>
+	  		<script>
+			var filter_open = false;
+			$("#filter").click(function(){
+			if(filter_open == false){
+			$("#filter").animate({height: "250px"});
+			filter_open = true;
+			}
+			else {
+			$("#filter").animate({height: "39px"});
+			filter_open = false;
+			}
+			});
+			</script>
+		<li><a href="help.html" class="button">ебаная</a></li><br/>
+		<li><a href="help.html" class="button">карта</a></li>
+	  </ul>
+	</div>
+	  <ul class="menu_low">
+	    <li><a href="help.html" class="button">пошел</a></li><br/>
+	    <li><a href="help.html" class="button">нахуй</a></li>
+	  </ul>
+	<div class="object_container">
+	
+	</div>
+	<div id="map">
+	</div>
+  </body>
+</html>
