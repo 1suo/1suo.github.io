@@ -104,12 +104,16 @@ li{
 	text-size: 60px;
 	text-color: rgb(35,201,60);
 	position: fixed;
-	width: 800px;
+	width: 1000px;
 	height: 100%;
 	top: 56px;
 	right: 0;
-	background-color: rgba(197,211,222,0.5);
+	background-color: rgba(251,160,251,0.8);
 	z-index: 2
+}
+.pidor {
+	text-size: 50px;
+	color: rgb(160,251,251)
 }
 .menu_high {
 	position: absolute;
