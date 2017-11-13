@@ -1,3 +1,8 @@
 body {
 		background-color: rgba(00, 00, 00, 0.5);
 }
+.bg {
+	background-color: rgb(00, 00, 00);
+	vertical-align: center;
+	position: absolute;
+}
