@@ -1,8 +1,102 @@
+
 body {
-		background-color: rgba(00, 00, 00, 1);
+	background-image: url("dataviz.svg");
+	    background-size: 100%;
+		background-repeat: no-repeat;
+		background-color: rgba(0,0,0,1);
 }
-.bg {
-	background-color: rgba(00, 00, 00, 1);
+#main {
+	position: absolute; /* Относительное позиционирование */
+	width: 1024px;	/* Ширина блока div */
+	max-width: 1024px;
+	height: 100%;
+	margin-left: -500px; /* Внешний левый отступ. Отрицательное значение означает, что блок выходит за левого края браузера на 500px */
+	margin-right: -500px;
+	left: 50%; /* Позиционирование относительно левого края окна браузера */
+	right: 50%;
+	top: 0;
+}
+.hat_container {
+	position: absolute;
+	margin-left: -50%;
+	left: 50%; 
+	right: 50%;
+	top: 0;
+	left: 0;
+	right: 0;
+	width: 100%;
+	z-index: 1;
+	margin: 0 auto;
+	width: 100%;
+}
+.contentHeader {
+	position: absolute;
+	top: 3em;
+	margin: 1em;
+	font-family: txt;
+	font-size: 40px;
+	text-align: center;
+	text-decoration: none;
+}
+.sidebar_int {
+	position: absolute;
+	background-color: rgba(255,255,255,0.2);
+	font-size: 20px;
+	font-family: ISOCP;
+}
+.content {
 	vertical-align: center;
 	position: absolute;
 }
+.logo {
+	position: absolute;
+	left: 0px;
+}
+.menu {
+	position: relative;
+	left: 0px;
+	top: 9em;
+	width: 4em;
+	font-family: txt;
+	font-size: 2em;
+	text-decoration: none;
+	line-height: 1em;
+	display: block;
+	text-align: right;
+    z-index: 2;	
+}
+.menu_button {
+	color: white;
+	margin: 0.6em;
+	background-color: rgba(100%,100%,100%,0.1);
+}
+#closeBar {
+	position: absolute;
+	background-color: rgba(255, 255, 255, 0.1);
+}
+*{
+    box-sizing: border-box;
+	font-family: txt;
+}
+@media screen and (min-width: 320px) {
+    body {
+        background-color: black;
+		 }
+            #mySidebar {
+                font-size: 20px;
+				width: 70%;
+				height: 100%;
+				right: 0;
+				z-index: 3;
+            }
+			#closeBar {
+				width: 30%;
+				height: 100%;
+				left: 0;
+				z-index: 3;
+			}
+			#textLogo {
+				top: 0;
+				z-index: 3;
+			}
+        }
