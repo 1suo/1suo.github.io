@@ -3,7 +3,7 @@ body {
 	background-image: url("dataviz.svg");
 	    background-size: 100%;
 		background-repeat: no-repeat;
-		background-color: rgba(0,0,0,1);
+		background-image: url("space.jpg");
 }
 #main {
 	position: absolute; /* Относительное позиционирование */
