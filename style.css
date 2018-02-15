@@ -52,28 +52,6 @@ body {
 	position: absolute;
 	left: 0px;
 }
-.menu {
-	position: relative;
-	left: 0px;
-	top: 9em;
-	width: 4em;
-	font-family: txt;
-	font-size: 2em;
-	text-decoration: none;
-	line-height: 1em;
-	display: block;
-	text-align: right;
-    z-index: 2;	
-}
-.menu_button {
-	color: white;
-	margin: 0.6em;
-	background-color: rgba(100%,100%,100%,0.1);
-}
-#closeBar {
-	position: absolute;
-	background-color: rgba(255, 255, 255, 0.1);
-}
 *{
     box-sizing: border-box;
 	font-family: txt;
