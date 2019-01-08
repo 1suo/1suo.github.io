@@ -6,6 +6,9 @@ body {
 	background-repeat: no-repeat;
 		
 }
+p {
+	display: inline-block;
+}
 #main {
 	position: absolute; /* Относительное позиционирование */
 	width: 1024px;	/* Ширина блока div */
