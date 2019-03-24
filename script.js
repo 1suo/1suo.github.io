@@ -1,18 +1,19 @@
-async function getData(){
+// @ts-nocheck
+async function getData() {
     const carsDataReq = await fetch('https://storage.googleapis.com/tfjs-tutorials/carsData.json');
     const carsData = await carsDataReq.json();
     const cleaned = carsData.map(car => ({
         acc: car.Acceleration,
         horsepower: car.Horsepower,
-    })) 
-    .filter(car => (car.acc != null && car.horsepower != null));
+    }))
+        .filter(car => (car.acc != null && car.horsepower != null));
     return cleaned;
 }
 
 function createModel() {
     const model = tf.sequential();
-    model.add(tf.layers.dense({inputShape: [1], units: 1, useBias:true}));
-    model.add(tf.layers.dense({units: 1, useBias: true}));
+    model.add(tf.layers.dense({ inputShape: [1], units: 1, useBias: true }));
+    model.add(tf.layers.dense({ units: 1, useBias: true }));
     return model;
 }
 
@@ -36,7 +37,7 @@ function convertToTensor(data) {
             inputMin,
             labelMax,
             labelMin,
-        }; 
+        };
     });
 }
 
@@ -53,36 +54,36 @@ async function trainModel(model, inputs, labels) {
         epochs,
         shuffle: true,
         callbacks: tfvis.show.fitCallbacks(
-            {name: 'Training Perfomance'},
+            { name: 'Training Perfomance' },
             ['loss', 'mse'],
-            {height: 200, callbacks: ['onEpochEnd']}
+            { height: 200, callbacks: ['onEpochEnd'] }
         )
     });
 }
 
-async function run(){
+async function run() {
     const data = await getData();
     const values = data.map(d => ({
-        x:d.horsepower,
-        y:d.acc,
+        x: d.horsepower,
+        y: d.acc,
     }));
     tfvis.render.scatterplot(
-        {name:'Horsepower v Acceleration'},
-        {values},
-        { 
-            xLabel:'Horsepower',
-            yLabel:'Acceleration',
-            height:300
+        { name: 'Horsepower v Acceleration' },
+        { values },
+        {
+            xLabel: 'Horsepower',
+            yLabel: 'Acceleration',
+            height: 300
         }
     );
     const model = createModel();
-    tfvis.show.modelSummary({name: 'Model Summary'}, model);
+    tfvis.show.modelSummary({ name: 'Model Summary' }, model);
     const tensorData = convertToTensor(data);
-    const {inputs, labels} = tensorData;
+    const { inputs, labels } = tensorData;
     await trainModel(model, inputs, labels);
     console.log('Done Training');
 }
 
 
 
-document.addEventListener('DOMContentLoaded',run);
+document.addEventListener('DOMContentLoaded', run);
