@@ -1,0 +1,65 @@
+<svg width="206.72mm" height="206.72mm" version="1.1" viewBox="0 0 567 567" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+ <g transform="translate(-2159.5,80.5)">
+  <rect transform="translate(427.45)" x="-427.45" width="1080" height="1080" fill="#00f"/>
+  <g stroke="#f5f5f5">
+   <rect id="a" x="2160" y="-80" width="80" height="80" fill="none" stroke="#f5f5f5"/>
+   <use xlink:href="#a"/>
+   <use transform="translate(0,81)" xlink:href="#a"/>
+   <use transform="translate(0,162)" xlink:href="#a"/>
+   <use transform="translate(0,243)" xlink:href="#a"/>
+   <use transform="translate(0,324)" xlink:href="#a"/>
+   <use transform="translate(0,405)" xlink:href="#a"/>
+   <use transform="translate(0,486)" xlink:href="#a"/>
+   <use transform="translate(81)" xlink:href="#a"/>
+   <use transform="translate(81,81)" xlink:href="#a"/>
+   <use transform="translate(81,162)" xlink:href="#a"/>
+   <use transform="translate(81,243)" xlink:href="#a"/>
+   <use transform="translate(81,324)" xlink:href="#a"/>
+   <use transform="translate(81,405)" xlink:href="#a"/>
+   <use transform="translate(81,486)" xlink:href="#a"/>
+   <use transform="translate(162)" xlink:href="#a"/>
+   <use transform="translate(162,81)" xlink:href="#a"/>
+   <use transform="translate(162,162)" xlink:href="#a"/>
+   <use transform="translate(162,243)" xlink:href="#a"/>
+   <use transform="translate(162,324)" xlink:href="#a"/>
+   <use transform="translate(162,405)" xlink:href="#a"/>
+   <use transform="translate(162,486)" xlink:href="#a"/>
+   <use transform="translate(243)" xlink:href="#a"/>
+   <use transform="translate(243,81)" xlink:href="#a"/>
+   <use transform="translate(243,162)" xlink:href="#a"/>
+   <use transform="translate(243,243)" xlink:href="#a"/>
+   <use transform="translate(243,324)" xlink:href="#a"/>
+   <use transform="translate(243,405)" xlink:href="#a"/>
+   <use transform="translate(243,486)" xlink:href="#a"/>
+   <use transform="translate(324)" xlink:href="#a"/>
+   <use transform="translate(324,81)" xlink:href="#a"/>
+   <use transform="translate(324,162)" xlink:href="#a"/>
+   <use transform="translate(324,243)" xlink:href="#a"/>
+   <use transform="translate(324,324)" xlink:href="#a"/>
+   <use transform="translate(324,405)" xlink:href="#a"/>
+   <use transform="translate(324,486)" xlink:href="#a"/>
+   <use transform="translate(405)" xlink:href="#a"/>
+   <use transform="translate(405,81)" xlink:href="#a"/>
+   <use transform="translate(405,162)" xlink:href="#a"/>
+   <use transform="translate(405,243)" xlink:href="#a"/>
+   <use transform="translate(405,324)" xlink:href="#a"/>
+   <use transform="translate(405,405)" xlink:href="#a"/>
+   <use transform="translate(405,486)" xlink:href="#a"/>
+   <use transform="translate(486)" xlink:href="#a"/>
+   <use transform="translate(486,81)" xlink:href="#a"/>
+   <use transform="translate(486,162)" xlink:href="#a"/>
+   <use transform="translate(486,243)" xlink:href="#a"/>
+   <use transform="translate(486,324)" xlink:href="#a"/>
+   <use transform="translate(486,405)" xlink:href="#a"/>
+   <use transform="translate(486,486)" xlink:href="#a"/>
+  </g>
+ </g>
+ <g transform="translate(-1732 80.5)">
+  <text transform="translate(28.16 15.765)" x="2239.6233" y="701.83514" fill="#ffffff" font-family="Betatron" font-size="128px" letter-spacing="0px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal;line-height:128px;shape-inside:url(#rect3396);white-space:pre" xml:space="preserve"/>
+  <rect x="-427.45" width="1016" height="540" fill="none" stroke-width=".90899"/>
+  <text transform="translate(28.16 15.765)" x="2239.6233" y="701.83514" fill="#ffffff" font-family="Betatron" font-size="64px" letter-spacing="0px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal;line-height:64px;shape-inside:url(#rect4297);white-space:pre" xml:space="preserve"/>
+  <rect x="-427.45" y="540" width="508" height="540" fill="none" stroke-width=".64275"/>
+  <circle cx="436.55" cy="864" r="102"/>
+  <path transform="translate(-969.58 9.8809)" d="m1488.4 862.91c-21.684 15.009-141.5-26.869-169.63-21.88s10.216 157.52-17.261 153.31c-27.476-4.2097-80.679-151.21-98.87-171.81-18.191-20.595-77.129 78.412-79.998 47.607-2.8693-30.805 59.717-117.81 62.776-146.73 3.0594-28.913-97.515-140.55-82.001-162.19 15.514-21.637 31.71 2.6014 54.356-15.58s9.0534-122.19 38.809-123.58c29.755-1.3893 61.214 161.52 87.038 168.71s93.36-121.55 110.45-103.84c17.085 17.705-43.618 143.73-34.442 171.25 9.1762 27.523 195.08 13.267 198.33 38.319 3.2478 25.052-146.58 30.934-151.84 55.619s103.97 95.779 82.286 110.79z" fill="none" stroke="#6f0" stroke-width="12"/>
+ </g>
+</svg>

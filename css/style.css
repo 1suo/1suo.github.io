@@ -1,4 +1,8 @@
 body {
 	font-family: 'JetBrains Mono', monospace;
-	/* font-family: 'Space Grotesk', sans-serif; */
+	
+}
+h1 {
+	font-size: 5em;
+	font-family: 'Space Grotesk', sans-serif;
 }
