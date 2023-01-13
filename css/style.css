@@ -6,7 +6,7 @@ body header, body main, body footer, body article {
 }
 h1 {
 	font-size: 5em;
-	/* font-family: 'Space Grotesk', sans-serif; */
+	font-family: 'Space Grotesk', sans-serif;
 }
 h2, h3, h4, h5 {
 	font-family: 'Space Grotesk', sans-serif;
