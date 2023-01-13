@@ -1,8 +1,28 @@
 body {
 	font-family: 'JetBrains Mono', monospace;
-	
+}
+body header, body main, body footer, body article {
+	/* max-width: 100%; */
 }
 h1 {
 	font-size: 5em;
+	/* font-family: 'Space Grotesk', sans-serif; */
+}
+h2, h3, h4, h5 {
 	font-family: 'Space Grotesk', sans-serif;
+}
+.imgpreview {
+	object-fit: cover;
+	width: 100px;
+	height: 100px;
+	border-radius: 16%;
+	display:inline;
+	justify-content: start;
+	margin-bottom: -1rem;
+}
+input {
+	font-size: small !important;
+	background-color: aqua !important;
+	color: black !important;
+	border-radius: 16%;
 }
