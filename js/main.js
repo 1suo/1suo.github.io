@@ -21,6 +21,19 @@ fetch('../html/header.html')
     document.body.insertAdjacentHTML('afterbegin', headerHtml);
 });
 
+document.addEventListener('DOMContentLoaded', function () {
+    const headerNav = document.getElementById('headerNav');
+    const currentPagePath = window.location.pathname;
+    const linkElement = document.createElement('a');
+    linkElement.href = currentPagePath.includes('index.html') ? 'index.html' : '../index.html';
+    linkElement.textContent = 'home';
+    const listItem = document.createElement('li');
+    listItem.appendChild(linkElement);
+    const ulElement = document.createElement('ul');
+    ulElement.appendChild(listItem);
+    headerNav.appendChild(ulElement);
+});
+
 function loadCSS(url) {
     var link = document.createElement('link');
     link.rel = 'stylesheet';
@@ -34,4 +47,3 @@ function loadScript(url) {
     script.src = url;
     document.head.appendChild(script);
 }
-
