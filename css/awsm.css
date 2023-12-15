@@ -19,7 +19,7 @@ body{
 }
 @media (min-width: 20rem){
   body{
-    /* font-size:calc(1rem + 0.00625 * (100vw - 20rem)); */
+    font-size:calc(1rem + 0.00625 * (100vw - 20rem));
   }
 }
 @media (min-width: 40rem){
@@ -694,5 +694,5 @@ noscript{
 }
 
 ::selection{
-  background:#3300ff33;
+  background: #ffffff33;
 }

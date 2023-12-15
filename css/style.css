@@ -1,15 +1,22 @@
 body {
 	font-family: 'JetBrains Mono', monospace;
+  /* font-family: 'PT Serif', serif; */
 }
 body header, body main, body footer, body article {
 	/* max-width: 100%; */
 }
 h1 {
-	font-size: 5em;
-	font-family: 'Space Grotesk', sans-serif;
+	/* font-size: 5em; */
+	/* font-family: 'Space Grotesk', sans-serif; */
+	/* font-family: 'JetBrains Mono', monospace; */
+	/* background-color: #2000ff; */
 }
 h2, h3, h4, h5 {
-	font-family: 'Space Grotesk', sans-serif;
+	/* font-family: 'Space Grotesk', sans-serif; */
+	/* font-family: 'JetBrains Mono', monospace; */
+}
+form {
+	/* margin-left: 0; */
 }
 .imgpreview {
 	object-fit: cover;
@@ -25,4 +32,8 @@ input {
 	background-color: aqua !important;
 	color: black !important;
 	border-radius: 16%;
+}
+
+section {
+	/* background-color: #ff00cc; */
 }
