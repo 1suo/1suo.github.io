@@ -1,3 +1,5 @@
+window.onload = function() {
+
 let theme = window.matchMedia("(prefers-color-scheme: dark)").matches
   ? "dark"
   : "light";
@@ -42,4 +44,5 @@ function setTheme(target) {
     button.style.color = "black";
     button.innerText = "dark";
   }
+}
 }
