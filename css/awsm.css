@@ -74,7 +74,7 @@ nav a:visited{
   color:#ff00cc;
 }
 nav a:hover{
-  color:#ccff00;
+  color:#00ff00;
 }
 
 ul, ol{
@@ -256,7 +256,7 @@ a:hover, a:active{
   outline-width:0;
 }
 a:hover{
-  color:#ccff00;
+  color:#00ff00;
 }
 a abbr{
   font-size:1em;

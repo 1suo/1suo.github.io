@@ -1,4 +1,57 @@
 body {
-  font-family: 'JetBrains Mono', monospace;
-  /* font-family: 'PT Serif', serif; */
+  font-family: "PT Serif", serif;
+}
+code {
+  font-family: "JetBrains Mono", monospace;
+}
+header,
+footer {
+  /* font-family: "JetBrains Mono", monospace; */
+  font-family: "PT Serif Caption", serif;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin-bottom: 1rem;
+}
+code {
+  background: none;
+  border-width: 0 !important;
+  padding: 1rem;
+}
+pre {
+  background: none;
+  border-radius: 8px;
+  background-color: #77777722;
+}
+blockquote {
+  border-radius: 8px;
+  background-color: #77777722;
+  padding: 0.5rem 2rem;
+}
+h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {
+  text-decoration: none;
+}
+
+::-webkit-scrollbar {
+  -webkit-appearance: none;
+  appearance: none;
+}
+::-webkit-scrollbar:vertical {
+  width: 11px;
+}
+::-webkit-scrollbar:horizontal {
+  height: 11px;
+}
+::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  border: 6px solid transparent; /* should match background, can't be transparent */
+  background-color: #77777722;
+}
+::-webkit-scrollbar-track {
+  background-color: transparent;
+  border-radius: 8px;
 }

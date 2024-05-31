@@ -1,38 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
+    <meta ctrueharset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>isuo</title>
     <link rel="icon" type="image/x-icon" href="img/logo.png" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@<0.164.1>/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@<0.164.1>/examples/jsm/"
+        }
+      }
+    </script>
 
-    <link rel="stylesheet" href="css/awsm.css" />
     <script src="js/main.js"></script>
   </head>
   <body>
-    <main>
-      <article>
-        <hr />
-        <section>
-	  <h1>🦠</h1>
-	  <h2>200</h2>
-	  <h3>Page found!</h3>
-	  <h6><i>Though nothing here yet</i></h6>
-	</section>
-        <!-- <hr /> -->
-        <!-- <section> -->
-        <!--   <fieldset> -->
-        <!--     <legend>dec 31, 2023</legend> -->
-        <!--     <h3><a href="testtags.html">wasm-synthesis</a></h3> -->
-        <!--     <p> -->
-        <!--       evolutionary synthesis of 3d models with you as the fitness -->
-        <!--       function -->
-        <!--     </p> -->
-        <!--   </fieldset> -->
-        <!-- </section> -->
-        <hr />
-      </article>
-    </main>
+    <div id="app"></div>
   </body>
 </html>
