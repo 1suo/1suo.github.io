@@ -6,7 +6,8 @@ let theme = window.matchMedia("(prefers-color-scheme: dark)").matches
 let body = document.documentElement;
 
 let nav = document.getElementById("nav");
-let button = document.createElement("button");
+let button = document.createElement("a");
+button.style.cursor = "pointer";
 button.innerText = theme == "dark" ? "light" : "dark";
 button.style.float = "right";
 nav.appendChild(button);
