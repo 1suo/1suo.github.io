@@ -161,9 +161,10 @@
   },
   "active": "7987365ed873e607",
   "lastOpenFiles": [
-    "js/main.js~",
-    "js/docsify.js~",
     "index.html~",
+    "js/main.js~",
+    "html/header.html~",
+    "js/docsify.js~",
     "docs/README.md",
     "docs/index.html",
     "docs",
@@ -175,7 +176,6 @@
     "js/highlight.js~",
     "js/highlight.js",
     "README.md",
-    "html/header.html~",
     "css/awsm.css~",
     "md/markdown-cheat-sheet.md"
   ]
