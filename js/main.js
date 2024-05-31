@@ -15,7 +15,7 @@ loadScript("https://cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js");
 loadScript("js/docsify.js");
 loadScript("//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js");
 loadScript("//cdn.jsdelivr.net/npm/docsify-latex@0");
-// loadScript("//cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js");
+loadScript("//cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js");
 // loadScript('https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/zoom-image.min.js');
 
 fetch("../html/footer.html")

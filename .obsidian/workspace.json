@@ -161,10 +161,14 @@
   },
   "active": "7987365ed873e607",
   "lastOpenFiles": [
+    "js/docsify.js~",
     "js/main.js~",
+    "index.html~",
+    "docs/README.md",
+    "docs/index.html",
+    "docs",
     "_index.md",
     "md/site.md",
-    "js/docsify.js~",
     "md/test.md",
     "js/theme-switcher.js~",
     "css/style.css~",
@@ -173,8 +177,6 @@
     "README.md",
     "html/header.html~",
     "css/awsm.css~",
-    "js/theme-switcher.js",
-    "js/three-test.js~",
     "md/markdown-cheat-sheet.md"
   ]
 }
