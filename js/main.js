@@ -1,4 +1,3 @@
-loadScript("js/theme-switcher.js");
 
 loadCSS("css/awsm.css");
 loadCSS("css/style.css");
@@ -46,3 +45,4 @@ function loadScript(url) {
   document.head.appendChild(script);
 }
 
+loadScript("js/theme-switcher.js");
