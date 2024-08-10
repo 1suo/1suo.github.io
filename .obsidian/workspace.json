@@ -25,7 +25,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "md/site.md",
+                "file": "_index.md",
                 "mode": "source",
                 "source": false
               }
@@ -98,7 +98,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "md/site.md",
+                "file": "_index.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -115,7 +115,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "md/site.md",
+                "file": "_index.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -138,7 +138,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "md/site.md"
+                "file": "_index.md"
               }
             }
           }
@@ -161,22 +161,21 @@
   },
   "active": "7987365ed873e607",
   "lastOpenFiles": [
-    "js/theme-switcher.js~",
+    "README.md",
+    "md/test.md",
+    "_index.md",
     "index.html~",
+    "md/site.md",
+    "js/theme-switcher.js~",
     "js/main.js~",
     "html/header.html~",
     "js/docsify.js~",
     "docs/README.md",
     "docs/index.html",
     "docs",
-    "_index.md",
-    "md/site.md",
-    "md/test.md",
     "css/style.css~",
     "js/highlight.js~",
     "js/highlight.js",
-    "README.md",
-    "css/awsm.css~",
     "md/markdown-cheat-sheet.md"
   ]
 }
