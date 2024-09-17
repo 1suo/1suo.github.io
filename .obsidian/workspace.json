@@ -37,14 +37,26 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "md/cns-cure.md",
+                "file": "md/markdown-cheat-sheet.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "4e41b5cbdb4ac396",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "droneshow-visualizer-kanban.md",
                 "mode": "source",
                 "source": false
               }
             }
           }
         ],
-        "currentTab": 2
+        "currentTab": 3
       }
     ],
     "direction": "vertical"
@@ -110,7 +122,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "md/cns-cure.md",
+                "file": "droneshow-visualizer-kanban.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -127,7 +139,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "md/cns-cure.md",
+                "file": "droneshow-visualizer-kanban.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -150,7 +162,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "md/cns-cure.md"
+                "file": "droneshow-visualizer-kanban.md"
               }
             }
           }
@@ -171,14 +183,17 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "4bee2fda56e10d16",
+  "active": "4e41b5cbdb4ac396",
   "lastOpenFiles": [
+    "Pasted image 20240917134058.png",
+    "md/markdown-cheat-sheet.md",
+    "droneshow-visualizer-kanban.md",
+    "md/site.md",
+    "md/test.md",
+    "README.md",
     "_index.md",
     "md/cns-cure.md",
-    "README.md",
-    "md/test.md",
     "index.html~",
-    "md/site.md",
     "js/theme-switcher.js~",
     "js/main.js~",
     "html/header.html~",
@@ -188,7 +203,6 @@
     "docs",
     "css/style.css~",
     "js/highlight.js~",
-    "js/highlight.js",
-    "md/markdown-cheat-sheet.md"
+    "js/highlight.js"
   ]
 }
