@@ -8,63 +8,26 @@
         "type": "tabs",
         "children": [
           {
-            "id": "343906ffe4ca6806",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "_index.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "_index"
-            }
-          },
-          {
-            "id": "7987365ed873e607",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "_index.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "_index"
-            }
-          },
-          {
             "id": "6d2b37180b74696f",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "kanban",
               "state": {
-                "file": "md/markdown-cheat-sheet.md",
-                "mode": "source",
-                "source": false
+                "file": "md/luma.md",
+                "kanbanViewState": {
+                  "kanban-plugin": "board",
+                  "list-collapse": [
+                    null,
+                    null,
+                    false
+                  ]
+                }
               },
-              "icon": "lucide-file",
-              "title": "markdown-cheat-sheet"
-            }
-          },
-          {
-            "id": "4e41b5cbdb4ac396",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "md/markdown-cheat-sheet.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "markdown-cheat-sheet"
+              "icon": "lucide-trello",
+              "title": "luma"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "vertical"
@@ -88,39 +51,12 @@
               "icon": "lucide-folder-closed",
               "title": "Files"
             }
-          },
-          {
-            "id": "045449ad2cd32999",
-            "type": "leaf",
-            "state": {
-              "type": "search",
-              "state": {
-                "query": "",
-                "matchingCase": false,
-                "explainSearch": false,
-                "collapseAll": false,
-                "extraContext": false,
-                "sortOrder": "alphabetical"
-              },
-              "icon": "lucide-search",
-              "title": "Search"
-            }
-          },
-          {
-            "id": "e74cd74f5be479a0",
-            "type": "leaf",
-            "state": {
-              "type": "bookmarks",
-              "state": {},
-              "icon": "lucide-bookmark",
-              "title": "Bookmarks"
-            }
           }
         ]
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 237.5
   },
   "right": {
     "id": "0098dee4b1361e11",
@@ -131,40 +67,19 @@
         "type": "tabs",
         "children": [
           {
-            "id": "a6aca27c58c63cca",
+            "id": "f3fa0cbeddffa15b",
             "type": "leaf",
             "state": {
-              "type": "backlink",
+              "type": "outline",
               "state": {
-                "file": "md/markdown-cheat-sheet.md",
-                "collapseAll": false,
-                "extraContext": false,
-                "sortOrder": "alphabetical",
-                "showSearch": false,
-                "searchQuery": "",
-                "backlinkCollapsed": false,
-                "unlinkedCollapsed": true
+                "file": "md/droneshow-visualizer-kanban.md"
               },
-              "icon": "links-coming-in",
-              "title": "Backlinks for markdown-cheat-sheet"
+              "icon": "lucide-list",
+              "title": "Outline of droneshow-visualizer-kanban"
             }
           },
           {
-            "id": "8c66a16ba41120a6",
-            "type": "leaf",
-            "state": {
-              "type": "outgoing-link",
-              "state": {
-                "file": "md/markdown-cheat-sheet.md",
-                "linksCollapsed": false,
-                "unlinkedCollapsed": true
-              },
-              "icon": "links-going-out",
-              "title": "Outgoing links from markdown-cheat-sheet"
-            }
-          },
-          {
-            "id": "66a19c18a0a9dfa9",
+            "id": "d83fde344d8fc0ec",
             "type": "leaf",
             "state": {
               "type": "tag",
@@ -174,18 +89,6 @@
               },
               "icon": "lucide-tags",
               "title": "Tags"
-            }
-          },
-          {
-            "id": "1193596678ab951c",
-            "type": "leaf",
-            "state": {
-              "type": "outline",
-              "state": {
-                "file": "md/markdown-cheat-sheet.md"
-              },
-              "icon": "lucide-list",
-              "title": "Outline of markdown-cheat-sheet"
             }
           }
         ]
@@ -198,33 +101,33 @@
   "left-ribbon": {
     "hiddenItems": {
       "switcher:Open quick switcher": false,
-      "graph:Open graph view": false,
-      "canvas:Create new canvas": false,
-      "daily-notes:Open today's daily note": false,
-      "templates:Insert template": false,
-      "command-palette:Open command palette": false
+      "command-palette:Open command palette": false,
+      "obsidian-kanban:Create new board": false
     }
   },
-  "active": "4e41b5cbdb4ac396",
+  "active": "6d2b37180b74696f",
   "lastOpenFiles": [
-    "md/cns-cure.md",
     "md/markdown-cheat-sheet.md",
+    "md/luma.md",
+    "Untitled.md",
+    "js/docsify.js~",
+    "index.html~",
+    "md/droneshow-visualizer-kanban.md",
+    "Untitled Kanban.md",
+    "_index.md",
+    "md/droneshow-visualizer.md — ярлык.lnk",
+    "md/cns-cure.md",
     "md/site.md",
     "md/test.md",
-    "md/droneshow-visualizer-kanban.md",
     "Pasted image 20240917134058.png",
     "README.md",
-    "_index.md",
-    "index.html~",
     "js/theme-switcher.js~",
     "js/main.js~",
     "html/header.html~",
-    "js/docsify.js~",
     "docs/README.md",
     "docs/index.html",
     "docs",
     "css/style.css~",
-    "js/highlight.js~",
-    "js/highlight.js"
+    "js/highlight.js~"
   ]
 }
