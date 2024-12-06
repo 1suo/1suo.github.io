@@ -35,6 +35,12 @@ blockquote {
 h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {
   text-decoration: none;
 }
+mark {
+	background-color: #0000ff66;
+	color: inherit;
+	padding: 0.1rem 0.6rem;
+	border-radius: 18px;
+}
 
 ::-webkit-scrollbar {
   -webkit-appearance: none;
