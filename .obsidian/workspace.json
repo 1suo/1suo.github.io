@@ -11,20 +11,15 @@
             "id": "6d2b37180b74696f",
             "type": "leaf",
             "state": {
-              "type": "kanban",
+              "type": "markdown",
               "state": {
-                "file": "md/luma.md",
-                "kanbanViewState": {
-                  "kanban-plugin": "board",
-                  "list-collapse": [
-                    false,
-                    null,
-                    null
-                  ]
-                }
+                "file": "_index.md",
+                "mode": "source",
+                "backlinks": false,
+                "source": false
               },
-              "icon": "lucide-trello",
-              "title": "luma"
+              "icon": "lucide-file",
+              "title": "_index"
             }
           }
         ]
@@ -107,27 +102,28 @@
   },
   "active": "6d2b37180b74696f",
   "lastOpenFiles": [
+    "md/site.md",
+    "_index.md",
     "js/docsify.js~",
     "css/style.css~",
-    "md/markdown-cheat-sheet.md",
-    "md/luma.md",
-    "Untitled.md",
     "index.html~",
-    "md/droneshow-visualizer-kanban.md",
-    "Untitled Kanban.md",
-    "_index.md",
-    "md/droneshow-visualizer.md — ярлык.lnk",
-    "md/cns-cure.md",
-    "md/site.md",
-    "md/test.md",
-    "Pasted image 20240917134058.png",
     "README.md",
     "js/theme-switcher.js~",
+    "md/markdown-cheat-sheet.md",
+    "Untitled.md",
+    "md/luma.md",
+    "Clippings/Men's Coats, Jackets & Vests for Sale - eBay.md",
+    "Clippings",
+    "md/droneshow-visualizer-kanban.md",
+    "Untitled Kanban.md",
+    "md/droneshow-visualizer.md — ярлык.lnk",
+    "md/cns-cure.md",
+    "md/test.md",
+    "Pasted image 20240917134058.png",
     "js/main.js~",
     "html/header.html~",
     "docs/README.md",
     "docs/index.html",
-    "docs",
-    "js/highlight.js~"
+    "docs"
   ]
 }
