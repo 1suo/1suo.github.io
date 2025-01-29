@@ -4,12 +4,10 @@ window.onload = function () {
     : "🌞";
   let body = document.documentElement;
 
-  let nav = document.getElementById("nav");
-  let button = document.createElement("a");
+  let button = document.getElementById("theme-switcher");
   button.style.cursor = "pointer";
   button.innerText = theme == "🌚" ? "🌞" : "🌚";
   button.style.float = "right";
-  nav.appendChild(button);
   setTheme(theme);
 
   button.addEventListener("click", () => {
@@ -24,24 +22,22 @@ window.onload = function () {
 
       const links = document.querySelectorAll("a");
       links.forEach((link) => {
-        link.style.color = "red";
+        link.style.setProperty("--color", "springgreen");
+        link.style.setProperty("--hover", "yellow");
+        link.style.setProperty("--visited", "magenta");
       });
-
-      button.style.backgroundColor = "black";
-      button.style.color = "white";
       button.innerText = "🌞";
     } else {
       theme = "🌞";
-      body.style.backgroundColor = "white";
+      body.style.backgroundColor = "whitesmoke";
       body.style.color = "black";
 
       const links = document.querySelectorAll("a");
       links.forEach((link) => {
-        link.style.color = "blue";
+        link.style.setProperty("--color", "blue");
+        link.style.setProperty("--hover", "cyan");
+        link.style.setProperty("--visited", "magenta");
       });
-
-      button.style.backgroundColor = "white";
-      button.style.color = "black";
       button.innerText = "🌚";
     }
   }

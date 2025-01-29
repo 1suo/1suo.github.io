@@ -102,14 +102,16 @@
   },
   "active": "6d2b37180b74696f",
   "lastOpenFiles": [
-    "md/site.md",
-    "_index.md",
-    "js/docsify.js~",
+    "_index.md~",
     "css/style.css~",
     "index.html~",
-    "README.md",
     "js/theme-switcher.js~",
+    "css/awsm.css~",
+    "md/site.md",
     "md/markdown-cheat-sheet.md",
+    "_index.md",
+    "js/docsify.js~",
+    "README.md",
     "Untitled.md",
     "md/luma.md",
     "Clippings/Men's Coats, Jackets & Vests for Sale - eBay.md",
@@ -123,7 +125,6 @@
     "js/main.js~",
     "html/header.html~",
     "docs/README.md",
-    "docs/index.html",
-    "docs"
+    "docs/index.html"
   ]
 }

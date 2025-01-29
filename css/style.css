@@ -9,6 +9,30 @@ footer {
   /* font-family: "JetBrains Mono", monospace; */
   font-family: "PT Serif Caption", serif;
 }
+header {
+  position: fixed;
+  top: 0;
+  z-index: 1000;
+  /* content in the middle  */
+  display: flex;
+  justify-content: center;
+}
+main {
+  padding-top: 3rem;
+}
+nav {
+  position: fixed;
+  top: 0;
+  border-radius: 3rem;
+  padding: 0.5rem;
+  background-color: #77777722;
+  display: flex;
+  justify-content: center;
+}
+nav a {
+  margin: 0.3rem 0.5rem;
+  text-decoration: none;
+}
 h1,
 h2,
 h3,
@@ -18,10 +42,18 @@ h6 {
   margin-bottom: 1rem;
 }
 code {
-  background: none;
   border-width: 0 !important;
+  border-radius: 8px;
   font-size: 1rem;
-  padding: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  margin: 0.3rem;
+  background-color: #77777722;
+}
+pre code {
+  padding: 0;
+  margin: 0;
+  font-size: 1rem;
+  background: none;
 }
 pre {
   padding: 1rem;
@@ -32,6 +64,8 @@ pre {
 blockquote {
   border-radius: 8px;
   background-color: #77777722;
+  opacity: 0.7;
+  font-style: italic;
   padding: 1rem;
   margin: 1rem 0;
   border-left: 4px solid #77777766;
@@ -43,12 +77,37 @@ h4 a,
 h5 a,
 h6 a {
   text-decoration: none;
+  color: inherit;
 }
+h1 a:hover,
+h2 a:hover,
+h3 a:hover,
+h4 a:hover,
+h5 a:hover,
+h6 a:hover {
+  color: inherit;
+  opacity: 0.6;
+}
+h1 a:visited,
+h2 a:visited,
+h3 a:visited,
+h4 a:visited,
+h5 a:visited,
+h6 a:visited {
+  color: inherit;
+}
+
 mark {
   background-color: #0000ff22;
   color: #0000ff;
   padding: 0.1rem 0.6rem;
   border-radius: 18px;
+}
+
+.fa-brands,
+.fa-solid {
+  font-size: 1rem;
+  padding: 0.5rem;
 }
 
 ::-webkit-scrollbar {
@@ -64,7 +123,7 @@ mark {
 ::-webkit-scrollbar-thumb {
   border-radius: 8px;
   border: 6px solid transparent; /* should match background, can't be transparent */
-  background-color: #77777722;
+  background-color: #77777744;
 }
 ::-webkit-scrollbar-track {
   background-color: transparent;
