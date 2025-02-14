@@ -1,5 +1,7 @@
 body {
   font-family: "PT Serif", serif;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1.6rem' height='1.6rem'%3E%3Ccircle cx='5' cy='5' r='0.4' fill='gray'/%3E%3C/svg%3E");
+  background-repeat: repeat;
 }
 code {
   font-family: "JetBrains Mono", monospace;
