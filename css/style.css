@@ -45,12 +45,11 @@ h6 {
   margin-bottom: 1rem;
 }
 code {
-  border-width: 0 !important;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 1rem;
-  padding: 0.3rem 0.6rem;
+  padding: 0.1rem 0.4rem;
   margin: 0.3rem;
-  background-color: #77777722;
+  background-color: #77777733;
 }
 pre code {
   padding: 0;

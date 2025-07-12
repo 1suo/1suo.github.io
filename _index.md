@@ -1,7 +1,7 @@
 ### ME
-*name:*  Roman Kalashnikov
-*origin:* 1991, Simferopol, Crimea🏴 
-*occupation:*
+###### Name:
+Roman Kalashnikov
+###### Occupation:
 - frontend engineering, mostly 3d and efficient data streaming (Vue, Three.js, WebGL, xstate, webRTC, ffmpeg, SQLite, indexedDB, wasm)
 - 3D/2D/CAD/BIM, mostly automating CAD and BIM workflows (Rhino, Grasshopper, FreeCAD, Blender, Geometry Nodes)
 - Ergonomic keyboards and layouts
