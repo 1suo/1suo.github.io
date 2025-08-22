@@ -3,27 +3,35 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Evolutionary SVG — Kaleidoscope v4</title>
+  <title>Evolutionary SVG — Kaleidoscope Final</title>
   <style>
     :root{--bg:#0b0c10;--cell:#0f1724;--fg:#e6eef6}
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,Segoe UI,Roboto}
     header{padding:10px 14px;display:flex;gap:8px;align-items:center;background:rgba(2,6,23,.7);position:sticky;top:0;z-index:3}
-    .grid{width:min(1100px,100%);margin:12px auto;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .grid{width:min(1100px,100%);margin:8px auto;display:grid;gap:8px}
     .cell{background:var(--cell);border-radius:12px;overflow:hidden;aspect-ratio:1/1;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer}
     .cell svg{width:100%;height:100%;display:block}
     .badge{position:absolute;left:10px;top:10px;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,.35);font-size:13px}
     .toolbar{margin-left:auto;display:flex;gap:8px}
     button{background:#06202b;color:var(--fg);border:1px solid rgba(255,255,255,.03);padding:8px 10px;border-radius:10px;cursor:pointer}
+    @media (max-width: 600px) {
+      .grid { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, auto); gap: 6px; margin: 0 auto; padding: 10px; }
+      .cell { max-height: calc((100vh - 40px - 24px - 20px) / 4); } /* Header 40px, gaps 24px, padding 20px */
+    }
+    @media (min-width: 601px) {
+      .grid { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, auto); }
+    }
   </style>
 </head>
 <body>
   <header>
-    <div style="font-weight:600">Evolutionary SVG — Kaleidoscope v4</div>
+    <div style="font-weight:600">Evolutionary SVG — Kaleidoscope Final</div>
     <div class="toolbar">
       <button id="saveSvg">Save SVG</button>
       <button id="savePng">Save PNG</button>
       <button id="randomize">Random Parent</button>
+      <button id="undo">Undo</button>
     </div>
   </header>
 
@@ -32,201 +40,280 @@
   </main>
 
 <script>
-const ns='http://www.w3.org/2000/svg';
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-function rand(a=0,b=1){return a+Math.random()*(b-a);} 
-const randInt=(a,b)=>Math.floor(rand(a,b+1));
-const choice=(arr)=>arr[Math.floor(Math.random()*arr.length)];
-const deep=o=>JSON.parse(JSON.stringify(o));
-function randColor(){return `hsl(${randInt(0,359)} ${Math.round(rand(45,85))}% ${Math.round(rand(25,70))}%)`}
+// Utilities
+const NS = 'http://www.w3.org/2000/svg';
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+function rand(a=0,b=1){return a + Math.random()*(b-a);} 
+const randInt = (a,b) => Math.floor(rand(a,b+1));
+const choice = (arr) => arr[Math.floor(Math.random()*arr.length)];
+const deep = (o) => JSON.parse(JSON.stringify(o));
+function randColor(){ return `hsl(${randInt(0,359)} ${Math.round(rand(45,85))}% ${Math.round(rand(25,70))}%)`; }
+function el(tag, attrs={}){ const e = document.createElementNS(NS, tag); for(const k in attrs) if(attrs[k]!==undefined) e.setAttribute(k, String(attrs[k])); return e; }
 
-/* ====== Genotype randoms ====== */
+// Genotype schema + randoms
 function randomShape(){
-  const types=['circle','rect','path'];
-  const t=choice(types);
-  const hasFill=Math.random()<0.8; const hasStroke=Math.random()<0.95;
-  if(t==='circle') return {type:'circle', x:rand(0.1,0.75), y:rand(0.1,0.9), r:rand(0.01,0.10), fillIdx: hasFill?0:-1, strokeIdx: hasStroke?0:-1};
-  if(t==='rect') return {type:'rect', x:rand(0.1,0.8), y:rand(0.1,0.8), w:rand(0.01,0.3), h:rand(0.01,0.3), rx:rand(0,0.12), fillIdx: hasFill?0:-1, strokeIdx: hasStroke?0:-1};
-  // path
-  const segs=[['M', rand(0.01,0.85), rand(0.05,0.95)]]; const n=randInt(2,6);
+  const types = ['circle','rect','path'];
+  const t = choice(types);
+  const hasFill = Math.random() < 0.85; const hasStroke = Math.random() < 0.9;
+  if(t === 'circle') return { type:'circle', x: rand(0.4,0.6), y: rand(0.1,0.9), r: rand(0.02,0.06), fillIdx: hasFill?0:-1, strokeIdx: hasStroke?0:-1 };
+  if(t === 'rect') return { type:'rect', x: rand(0.4,0.6), y: rand(0.1,0.9), w: rand(0.02,0.12), h: rand(0.02,0.12), rx: rand(0,0.06), fillIdx: hasFill?0:-1, strokeIdx: hasStroke?0:-1 };
+  const segs = [['M', rand(0.4,0.6), rand(0.1,0.9)]];
+  const n = randInt(1,4);
   for(let i=0;i<n;i++){
-    if(Math.random()<0.6) segs.push(['L', rand(0.05,0.95), rand(0.05,0.95)]);
-    else segs.push(['C', rand(0.05,0.95), rand(0.05,0.95), rand(0.05,0.95), rand(0.05,0.95), rand(0.05,0.95), rand(0.05,0.95)]);
+    if(Math.random()<0.6) segs.push(['L', rand(0.35,0.65), rand(0.05,0.95)]);
+    else segs.push(['C', rand(0.35,0.65), rand(0.05,0.95), rand(0.35,0.65), rand(0.05,0.95), rand(0.35,0.65), rand(0.05,0.95)]);
   }
-  if(Math.random()<0.35) segs.push(['Z']);
-  return {type:'path', segments:segs, fillIdx: hasFill?0:-1, strokeIdx: hasStroke?0:-1};
+  if(Math.random()<0.3) segs.push(['Z']);
+  return { type:'path', segments: segs, fillIdx: hasFill?0:-1, strokeIdx: hasStroke?0:-1 };
 }
+
 function randomLayer(symOptions){
   const symmetry = symOptions ? choice(symOptions) : 2*randInt(2,8);
-  const shapesCount = randInt(1,5);
-  const hasBg = 0;
-  const bgIdx = Math.random() < 0.9 ? 0 : -1;
-  return {opacity:rand(0.7,1), background: hasBg? bgIdx : -1, blend:'normal', symmetry, shapes: Array.from({length:shapesCount}, ()=>randomShape())};
-}
-function randomGenotype(){
-  const symmetryValues=[1,2,4,6,8];
-  const palette=Array.from({length:randInt(1,7)}, ()=>randColor());
-  const strokes=Array.from({length:randInt(1,6)}, ()=>rand(0.1,10)); // px widths 0.1..10
-  const layers=Array.from({length:randInt(1,6)}, ()=>randomLayer(symmetryValues));
-  return {symmetryValues, globals:{palette, strokes, background: Math.random()<0.4? 'transparent' : randColor()}, layers};
+  const shapesCount = randInt(1,7);
+  const kaleidoscope = Math.random() < 0.6;
+  return { opacity: rand(0.7,1), kaleidoscope, blend:'normal', symmetry, shapes: Array.from({length: shapesCount}, ()=>randomShape()) };
 }
 
-/* ====== Geometry helpers ====== */
+function randomGenotype(){
+  const symmetryValues = [2,4,6,8,10,12];
+  const palette = Array.from({length: randInt(2,8)}, ()=>randColor());
+  const strokes = Array.from({length: randInt(1,4)}, ()=>rand(0.1,10));
+  const layers = Array.from({length: randInt(1,4)}, ()=>randomLayer(symmetryValues));
+  return { symmetryValues, globals: { palette, strokes, background: Math.random()<0.5? randColor() : 'transparent' }, layers };
+}
+
+// Geometry helpers
 function polarToXY(r, angle){ const cx=0.5, cy=0.5; return [cx + r*Math.cos(angle), cy + r*Math.sin(angle)]; }
+function rotatePoint(p, angle){ const cx=0.5, cy=0.5; const s=Math.sin(angle), c=Math.cos(angle); const x=p[0]-cx, y=p[1]-cy; return [cx + x*c - y*s, cy + x*s + y*c]; }
+function mirrorAcrossAxis(p, alpha){
+  const cx=0.5, cy=0.5; const x=p[0]-cx, y=p[1]-cy; const s=Math.sin(alpha), c=Math.cos(alpha);
+  const xr = x*c + y*s;
+  const yr = -x*s + y*c;
+  const xrf = xr; const yrf = -yr;
+  const xo = xrf*c - yrf*s; const yo = xrf*s + yrf*c;
+  return [cx + xo, cy + yo];
+}
+
 function mapPointInSectorToXY(xLocal, yLocal, sectorIndex, symmetryCount, mirrored=false){
-  // Position a point inside the sector: angle relative to the sector center, radius from yLocal.
   const sectorSpan = 2*Math.PI / symmetryCount;
-  let angleRel = (xLocal - 0.5) * sectorSpan; // local offset inside wedge
+  let angleRel = (xLocal - 0.5) * sectorSpan;
   if(mirrored) angleRel = -angleRel;
-  const maxR = Math.SQRT2 * 0.5; // fit unit square
+  const maxR = Math.SQRT2 * 0.5;
   const r = clamp(yLocal, 0, 1) * maxR;
   const angle = sectorIndex * sectorSpan + angleRel;
   return polarToXY(r, angle);
 }
-function el(tag, attrs={}){ const e=document.createElementNS(ns, tag); for(const k in attrs) if(attrs[k]!==undefined) e.setAttribute(k, String(attrs[k])); return e; }
 
-/* ====== Clipping + mirroring ====== */
-function rotatePoint(p, angle){ const cx=0.5, cy=0.5; const s=Math.sin(angle), c=Math.cos(angle); const x=p[0]-cx, y=p[1]-cy; return [cx + x*c - y*s, cy + x*s + y*c]; }
-function mirrorAcrossAxis(p, alpha){ // reflect around line through center at angle alpha
-  const cx=0.5, cy=0.5; const x=p[0]-cx, y=p[1]-cy; const s=Math.sin(alpha), c=Math.cos(alpha);
-  const xr =  x*c + y*s; const yr = -x*s + y*c; // rotate -alpha
-  const xrf = xr, yrf = -yr; // reflect across x-axis
-  const xo = xrf*c - yrf*s; const yo = xrf*s + yrf*c; // rotate back +alpha
-  return [cx+xo, cy+yo];
-}
 function isInside(p, cp1, cp2){ return (cp2[0]-cp1[0])*(p[1]-cp1[1]) >= (cp2[1]-cp1[1])*(p[0]-cp1[0]); }
 function intersection(s, e, cp1, cp2){ const dc=[cp1[0]-cp2[0], cp1[1]-cp2[1]]; const dp=[s[0]-e[0], s[1]-e[1]]; const n1 = cp1[0]*cp2[1]-cp1[1]*cp2[0]; const n2 = s[0]*e[1]-s[1]*e[0]; const denom = dc[0]*dp[1]-dc[1]*dp[0]; if(Math.abs(denom)<1e-9) return [(s[0]+e[0])/2, (s[1]+e[1])/2]; const x=(n1*dp[0]-n2*dc[0])/denom; const y=(n1*dp[1]-n2*dc[1])/denom; return [x,y]; }
 function clipPolygon(subjectPolygon, clipPolygon){ let outputList = subjectPolygon.slice(); for(let i=0;i<clipPolygon.length;i++){ const cp1=clipPolygon[i], cp2=clipPolygon[(i+1)%clipPolygon.length]; const inputList=outputList.slice(); outputList=[]; if(inputList.length===0) break; let S=inputList[inputList.length-1]; for(let j=0;j<inputList.length;j++){ const E=inputList[j]; if(isInside(E,cp1,cp2)){ if(!isInside(S,cp1,cp2)) outputList.push(intersection(S,E,cp1,cp2)); outputList.push(E); } else if(isInside(S,cp1,cp2)){ outputList.push(intersection(S,E,cp1,cp2)); } S=E; } } return outputList; }
+
 function mergeNearbyVerticesAcrossClones(clones, eps){ const n=clones.length; for(let i=0;i<n;i++){ const a=clones[i], b=clones[(i+1)%n]; for(let ia=0;ia<a.length;ia++){ for(let ib=0;ib<b.length;ib++){ const dx=a[ia][0]-b[ib][0], dy=a[ia][1]-b[ib][1]; if(dx*dx+dy*dy < eps*eps){ const mx=(a[ia][0]+b[ib][0])/2, my=(a[ia][1]+b[ib][1])/2; a[ia][0]=mx; a[ia][1]=my; b[ib][0]=mx; b[ib][1]=my; } } } } }
 function stitchClonesToPath(clones){ const pts=[]; for(const poly of clones) for(const p of poly) pts.push(p); if(pts.length===0) return ''; let d=`M ${pts[0][0]} ${pts[0][1]}`; for(let i=1;i<pts.length;i++) d += ` L ${pts[i][0]} ${pts[i][1]}`; d += ' Z'; return d; }
 
-/* ====== Approximate shapes to polygon (sector 0 global coords) ====== */
-function approxShapeToPolygon(shape, sym){
-  const pts=[];
-  if(shape.type==='circle'){
-    const samples=40; for(let i=0;i<samples;i++){ const a=(i/samples)*2*Math.PI; const lx=shape.x + Math.cos(a)*shape.r; const ly=shape.y + Math.sin(a)*shape.r; pts.push(mapPointInSectorToXY(lx,ly,0,sym,false)); } return pts;
-  }
-  if(shape.type==='rect'){
-    const corners=[[shape.x,shape.y],[shape.x+shape.w,shape.y],[shape.x+shape.w,shape.y+shape.h],[shape.x,shape.y+shape.h]]; for(const c of corners) pts.push(mapPointInSectorToXY(c[0],c[1],0,sym,false)); return pts;
-  }
-  if(shape.type==='path'){
-    for(const seg of shape.segments){ const cmd=seg[0]; if(cmd==='M' || cmd==='L') pts.push(mapPointInSectorToXY(seg[1],seg[2],0,sym,false)); else if(cmd==='C'){ const [,x1,y1,x2,y2,x3,y3]=seg; const p0=pts.length?pts[pts.length-1]:mapPointInSectorToXY(shape.segments[0][1],shape.segments[0][2],0,sym,false); const p1=mapPointInSectorToXY(x1,y1,0,sym,false); const p2=mapPointInSectorToXY(x2,y2,0,sym,false); const p3=mapPointInSectorToXY(x3,y3,0,sym,false); const steps=14; for(let t=1;t<=steps;t++){ const u=t/steps; const x=Math.pow(1-u,3)*p0[0]+3*Math.pow(1-u,2)*u*p1[0]+3*(1-u)*Math.pow(u,2)*p2[0]+Math.pow(u,3)*p3[0]; const y=Math.pow(1-u,3)*p0[1]+3*Math.pow(1-u,2)*u*p1[1]+3*(1-u)*Math.pow(u,2)*p2[1]+Math.pow(u,3)*p3[1]; pts.push([x,y]); } } }
-    return pts;
-  }
-  return pts;
-}
+function approxShapeToPolygon(shape, sym){ const pts=[]; if(shape.type==='circle'){ const samples=28; for(let i=0;i<samples;i++){ const a=(i/samples)*2*Math.PI; const lx=shape.x + Math.cos(a)*shape.r; const ly=shape.y + Math.sin(a)*shape.r; pts.push(mapPointInSectorToXY(lx,ly,0,sym,false)); } return pts; } if(shape.type==='rect'){ const corners=[[shape.x-shape.w/2,shape.y-shape.h/2],[shape.x+shape.w/2,shape.y-shape.h/2],[shape.x+shape.w/2,shape.y+shape.h/2],[shape.x-shape.w/2,shape.y+shape.h/2]]; for(const c of corners) pts.push(mapPointInSectorToXY(c[0],c[1],0,sym,false)); return pts; } if(shape.type==='path'){ for(const seg of shape.segments){ const cmd=seg[0]; if(cmd==='M' || cmd==='L') pts.push(mapPointInSectorToXY(seg[1],seg[2],0,sym,false)); else if(cmd==='C'){ const [,x1,y1,x2,y2,x3,y3]=seg; const p0=pts.length?pts[pts.length-1]:mapPointInSectorToXY(shape.segments[0][1],shape.segments[0][2],0,sym,false); const p1=mapPointInSectorToXY(x1,y1,0,sym,false); const p2=mapPointInSectorToXY(x2,y2,0,sym,false); const p3=mapPointInSectorToXY(x3,y3,0,sym,false); const steps=12; for(let t=1;t<=steps;t++){ const u=t/steps; const x=Math.pow(1-u,3)*p0[0]+3*Math.pow(1-u,2)*u*p1[0]+3*(1-u)*Math.pow(u,2)*p2[0]+Math.pow(u,3)*p3[0]; const y=Math.pow(1-u,3)*p0[1]+3*Math.pow(1-u,2)*u*p1[1]+3*(1-u)*Math.pow(u,2)*p2[1]+Math.pow(u,3)*p3[1]; pts.push([x,y]); } } } return pts; } return pts; }
 
-/* ====== Convert shape into merged kaleidoscope path ====== */
 function shapeToMergedPath(shape, genotype, sym){
-  const basePoly=approxShapeToPolygon(shape, sym);
-  if(!basePoly||basePoly.length===0) return null;
-  const n=sym; const span = 2*Math.PI/n; const i0=0; const theta0=(i0-0.5)*span, theta1=(i0+0.5)*span; const r=Math.SQRT2; const cx=0.5,cy=0.5; const x0=cx + r*Math.cos(theta0), y0=cy + r*Math.sin(theta0); const x1=cx + r*Math.cos(theta1), y1=cy + r*Math.sin(theta1); const wedge=[[cx,cy],[x0,y0],[x1,y1]];
-  const clipped0 = clipPolygon(basePoly, wedge); if(!clipped0||clipped0.length===0) return null;
-  const clones=[];
-  for(let si=0;si<n;si++){
-    const angle=si*span;
-    let clone = clipped0.map(p=> rotatePoint(p, angle));
-    if(si % 2 === 1){ // true kaleidoscope: odd sectors mirrored across their bisector
-      clone = clone.map(p=> mirrorAcrossAxis(p, angle));
+  const basePoly = approxShapeToPolygon(shape, sym);
+  if(!basePoly || basePoly.length===0) return null;
+  const n = sym; const span = 2*Math.PI/n; const cx=0.5, cy=0.5; const theta0 = -span/2, theta1 = span/2; const r = Math.SQRT2; const x0 = cx + r*Math.cos(theta0), y0 = cy + r*Math.sin(theta0); const x1 = cx + r*Math.cos(theta1), y1 = cy + r*Math.sin(theta1); const wedge = [[cx,cy],[x0,y0],[x1,y1]];
+  const clipped0 = clipPolygon(basePoly, wedge);
+  if(!clipped0 || clipped0.length===0) return null;
+  const clones = [];
+  for(let si=0; si<n; si++){
+    const angle = si * span;
+    let clone = clipped0.map(p => rotatePoint(p, angle));
+    if(shape._kaleidoscopeSectorFlip) {
     }
+    if(shape._mirrorOdd && (si % 2 === 1)) clone = clone.map(p => mirrorAcrossAxis(p, angle));
     clones.push(clone);
   }
-  // join along seams
   mergeNearbyVerticesAcrossClones(clones, 0.008);
-  const d=stitchClonesToPath(clones);
-  const path=el('path',{d});
-  if(shape.fillIdx>=0) path.setAttribute('fill', genotype.globals.palette[shape.fillIdx % genotype.globals.palette.length]); else path.setAttribute('fill','none');
-  if(shape.strokeIdx>=0) path.setAttribute('stroke', genotype.globals.palette[shape.strokeIdx % genotype.globals.palette.length]); else path.setAttribute('stroke','none');
-  path.style.strokeWidth = `${genotype.globals.strokes[Math.abs(shape.strokeIdx||0) % genotype.globals.strokes.length]}px`;
+  const d = stitchClonesToPath(clones);
+  const path = el('path', { d });
+  if(shape.fillIdx >= 0) path.setAttribute('fill', genotype.globals.palette[shape.fillIdx % genotype.globals.palette.length]); else path.setAttribute('fill','none');
+  if(shape.strokeIdx >= 0) path.setAttribute('stroke', genotype.globals.palette[shape.strokeIdx % genotype.globals.palette.length]); else path.setAttribute('stroke','none');
+  if(shape.strokeIdx >= 0) path.setAttribute('stroke-width', String(genotype.globals.strokes[Math.abs(shape.strokeIdx) % genotype.globals.strokes.length]));
+  else if(shape.fillIdx >= 0) path.setAttribute('stroke-width', String(genotype.globals.strokes[Math.abs(shape.fillIdx) % genotype.globals.strokes.length]));
+  else path.setAttribute('stroke-width', '0');
   path.setAttribute('vector-effect','non-scaling-stroke');
   return path;
 }
 
 function renderLayerToGroup(layer, genotype, svgSize){
-  const g=el('g'); g.setAttribute('opacity', layer.opacity ?? 1);
+  const g = el('g'); g.setAttribute('opacity', String(layer.opacity ?? 1));
   const n = layer.symmetry || (genotype.symmetryValues && genotype.symmetryValues[0]) || 6;
-  if(layer.background>=0){ const bg = el('rect',{x:0,y:0,width:1,height:1, fill: genotype.globals.palette[layer.background % genotype.globals.palette.length], opacity: 0.08}); g.appendChild(bg); }
-  for(const sh of layer.shapes){ const p = shapeToMergedPath(sh, genotype, n); if(p) g.appendChild(p); }
+  for(const sh of layer.shapes){
+    sh._mirrorOdd = !!layer.kaleidoscope;
+    const p = shapeToMergedPath(sh, genotype, n);
+    if(p) g.appendChild(p);
+  }
   return g;
 }
 
 function genotypeToSvgElement(genotype, size=1024){
-  const svg=el('svg',{xmlns:ns, viewBox:'0 0 1 1', width:size, height:size, preserveAspectRatio:'xMidYMid meet'});
-  if(genotype.globals && genotype.globals.background && genotype.globals.background!=='transparent') svg.appendChild(el('rect',{x:0,y:0,width:1,height:1, fill: genotype.globals.background}));
+  const svg = el('svg', { xmlns: NS, viewBox: '0 0 1 1', width: size, height: size, preserveAspectRatio: 'xMidYMid meet' });
+  if(genotype.globals && genotype.globals.background && genotype.globals.background !== 'transparent'){
+    const bg = el('rect', { x:0, y:0, width:1, height:1, fill: genotype.globals.background }); svg.appendChild(bg);
+  }
   for(const layer of genotype.layers){ svg.appendChild(renderLayerToGroup(layer, genotype, size)); }
   return svg;
 }
 
-/* ====== Mutation engine (structural + param) ====== */
-function mutateGenotype(gen,P){
-  const g=deep(gen);
-  // mutate global palettes & strokes
-  if(g.globals && g.globals.palette){ g.globals.palette = g.globals.palette.map(c => Math.random()<P ? randColor() : c); if(Math.random()<P*0.25) g.globals.palette.push(randColor()); if(Math.random()<P*0.15 && g.globals.palette.length>3) g.globals.palette.splice(randInt(0,g.globals.palette.length-1),1); }
-  if(g.globals && g.globals.strokes){ g.globals.strokes = g.globals.strokes.map(w => clamp(w + (Math.random()<P? rand(-2,2):0), 0.1, 10)); if(Math.random()<P*0.2) g.globals.strokes.push(rand(0.1,10)); if(Math.random()<P*0.1 && g.globals.strokes.length>2) g.globals.strokes.splice(randInt(0,g.globals.strokes.length-1),1); }
-  if(Math.random()<P*0.2){ if(Math.random()<0.5) g.symmetryValues.push(2*randInt(2,10)); else if(g.symmetryValues.length>2) g.symmetryValues.splice(randInt(0,g.symmetryValues.length-1),1); }
-  if(Math.random()<P*0.25 && g.layers.length>1) g.layers.splice(randInt(0,g.layers.length-1),1);
-  if(Math.random()<P*0.35 && g.layers.length<10) g.layers.splice(randInt(0,g.layers.length),0, randomLayer(g.symmetryValues));
+function mutateGenotype(gen, P){
+  const g = deep(gen);
+  if(Math.random() < P*0.12) g.globals.background = Math.random()<0.5 ? 'transparent' : randColor();
+  if(g.globals && g.globals.palette){ g.globals.palette = g.globals.palette.map(c => Math.random()<P ? randColor() : c); if(Math.random()<P*0.2) g.globals.palette.splice(randInt(0,g.globals.palette.length),0, randColor()); if(Math.random()<P*0.06 && g.globals.palette.length>3) g.globals.palette.splice(randInt(0,g.globals.palette.length-1),1); }
+  if(g.globals && g.globals.strokes){ g.globals.strokes = g.globals.strokes.map(w => clamp(w + (Math.random()<P? rand(-1.5,1.5):0), 0.1, 10)); if(Math.random()<P*0.18) g.globals.strokes.splice(randInt(0,g.globals.strokes.length),0, rand(0.1,10)); if(Math.random()<P*0.06 && g.globals.strokes.length>2) g.globals.strokes.splice(randInt(0,g.globals.strokes.length-1),1); }
+  if(Math.random() < P*0.12){ if(Math.random()<0.5) g.symmetryValues.splice(randInt(0,g.symmetryValues.length),0, 2*randInt(2,8)); else if(g.symmetryValues.length>2) g.symmetryValues.splice(randInt(0,g.symmetryValues.length-1),1); }
+  if(Math.random() < P*0.08 && g.layers.length>1) g.layers.splice(randInt(0,g.layers.length-1),1);
+  if(Math.random() < P*0.12 && g.layers.length<8) g.layers.splice(randInt(0,g.layers.length),0, randomLayer(g.symmetryValues));
+  if(Math.random() < P*0.06) { const i = randInt(0,g.layers.length-1); const j = randInt(0,g.layers.length-1); const tmp = g.layers[i]; g.layers[i] = g.layers[j]; g.layers[j] = tmp; }
   for(const layer of g.layers){
-    if(Math.random()<P*0.5) layer.opacity = clamp((layer.opacity||1) + rand(-0.25,0.25), 0.05, 1);
-    if(Math.random()<P*0.35) layer.symmetry = choice(g.symmetryValues);
-    if(Math.random()<P*0.25) layer.background = Math.random()<0.5 ? -1 : randInt(0, g.globals.palette.length-1);
-    // shape set edits
-    if(Math.random()<P*0.4 && layer.shapes.length>2) layer.shapes.splice(randInt(0,layer.shapes.length-1),1);
-    if(Math.random()<P*0.6) layer.shapes.splice(randInt(0,layer.shapes.length),0, randomShape());
+    if(Math.random() < P*0.5) layer.opacity = clamp((layer.opacity||1) + rand(-0.25,0.25), 0.05, 1);
+    if(Math.random() < P*0.25) layer.symmetry = choice(g.symmetryValues);
+    if(Math.random() < P*0.18) layer.kaleidoscope = !layer.kaleidoscope;
+    if(Math.random() < P*0.25 && layer.shapes.length>2) layer.shapes.splice(randInt(0,layer.shapes.length-1),1);
+    if(Math.random() < P*0.45) layer.shapes.splice(randInt(0,layer.shapes.length),0, randomShape());
     for(const s of layer.shapes){
       if(s.type==='circle'){
-        if(Math.random()<P) s.x = clamp(s.x + rand(-0.2,0.2), 0,1);
-        if(Math.random()<P) s.y = clamp(s.y + rand(-0.25,0.25), 0,1);
-        if(Math.random()<P) s.r = clamp(s.r + rand(-0.05,0.05), 0.008, 0.35);
+        if(Math.random()<P) s.x = clamp(s.x + rand(-0.12,0.12), 0,1);
+        if(Math.random()<P) s.y = clamp(s.y + rand(-0.2,0.2), 0,1);
+        if(Math.random()<P) s.r = clamp(s.r + rand(-0.02,0.02), 0.005, 0.25);
       }
       if(s.type==='rect'){
-        if(Math.random()<P) s.x = clamp(s.x + rand(-0.2,0.2), 0,1);
-        if(Math.random()<P) s.y = clamp(s.y + rand(-0.25,0.25), 0,1);
-        if(Math.random()<P) s.w = clamp(s.w + rand(-0.2,0.2), 0.01, 1);
-        if(Math.random()<P) s.h = clamp(s.h + rand(-0.2,0.2), 0.01, 1);
+        if(Math.random()<P) s.x = clamp(s.x + rand(-0.12,0.12), 0,1);
+        if(Math.random()<P) s.y = clamp(s.y + rand(-0.2,0.2), 0,1);
+        if(Math.random()<P) s.w = clamp(s.w + rand(-0.06,0.06), 0.01, 0.4);
+        if(Math.random()<P) s.h = clamp(s.h + rand(-0.06,0.06), 0.01, 0.4);
       }
       if(s.type==='path'){
-        if(Math.random()<P){ for(const seg of s.segments){ for(let i=1;i<seg.length;i++) seg[i] = clamp(seg[i] + rand(-0.15,0.15), 0,1); } }
-        if(Math.random()<P*0.25 && s.segments.length>2) s.segments.splice(randInt(1,s.segments.length-1),1);
-        if(Math.random()<P*0.35 && s.segments.length<24) s.segments.splice(randInt(1,s.segments.length),0, ['L', rand(0.15,0.85), rand(0.0,1.0)]);
+        if(Math.random()<P){ for(const seg of s.segments){ for(let i=1;i<seg.length;i++) seg[i] = clamp(seg[i] + rand(-0.12,0.12), 0,1); } }
+        if(Math.random()<P*0.2 && s.segments.length>2) s.segments.splice(randInt(1,s.segments.length-1),1);
+        if(Math.random()<P*0.25 && s.segments.length<30) s.segments.splice(randInt(1,s.segments.length),0, ['L', rand(0.35,0.65), rand(0.05,0.95)]);
       }
-      // fill / stroke toggles
-      if(Math.random()<P*0.4){ s.fillIdx = (s.fillIdx<0 && Math.random()<0.6) ? randInt(0, g.globals.palette.length-1) : (Math.random()<0.5? -1 : randInt(0, g.globals.palette.length-1)); }
-      if(Math.random()<P*0.5){ s.strokeIdx = (s.strokeIdx<0 && Math.random()<0.7) ? randInt(0, g.globals.palette.length-1) : (Math.random()<0.35? -1 : randInt(0, g.globals.palette.length-1)); }
+      if(Math.random() < P*0.4) s.fillIdx = (s.fillIdx<0 && Math.random()<0.5) ? randInt(0, g.globals.palette.length-1) : (Math.random()<0.5? -1 : randInt(0, g.globals.palette.length-1));
+      if(Math.random() < P*0.5) s.strokeIdx = (s.strokeIdx<0 && Math.random()<0.6) ? randInt(0, g.globals.palette.length-1) : (Math.random()<0.4? -1 : randInt(0, g.globals.palette.length-1));
     }
   }
   return g;
 }
 
-/* ====== UI grid ====== */
-const gridEl=document.getElementById('grid');
-let parentGen=randomGenotype();
-const mutationPlan=[0.1,0.1,0.1,0.3,0,0.3,0.5,0.5,0.5];
-function clearGrid(){gridEl.innerHTML='';}
+// UI: adaptive grid, parent first, parent click re-generates children
+const gridEl = document.getElementById('grid'); 
+let parentGen = randomGenotype(); 
+let history = [];
+const mutationPlan = [0, 0.1, 0.1, 0.1, 0.3, 0.3, 0.5, 0.5]; // 8 cells (1 parent + 7 children)
+function clearGrid(){ gridEl.innerHTML = ''; }
 function renderGrid(){
+  const svgs = [];
+  const gens = [deep(parentGen), ...mutationPlan.slice(1).map(P => mutateGenotype(parentGen, P))];
   clearGrid();
-  const gens = mutationPlan.map(P=> P===0 ? deep(parentGen) : mutateGenotype(parentGen, P));
-  gens.forEach((g, idx)=>{
-    const cell=document.createElement('div'); cell.className='cell'; if(idx===4) cell.style.outline='2px solid rgba(110,231,183,.12)';
-    const svgEl=genotypeToSvgElement(g,1024); cell.appendChild(svgEl);
-    const badge=document.createElement('div'); badge.className='badge'; badge.textContent= idx===4 ? 'Parent' : `P=${mutationPlan[idx].toFixed(1)}`; cell.appendChild(badge);
-    cell.addEventListener('click', ()=>{ if(idx!==4){ parentGen = g; renderGrid(); }});
+  gens.forEach((g, idx) => {
+    const cell = document.createElement('div'); 
+    cell.className='cell'; 
+    if(idx===0) cell.style.outline='2px solid rgba(110,231,183,.12)';
+    const svgEl = genotypeToSvgElement(g, 1024); 
+    cell.appendChild(svgEl); 
+    svgs.push(new XMLSerializer().serializeToString(svgEl));
+    const badge = document.createElement('div'); 
+    badge.className='badge'; 
+    badge.textContent = idx===0 ? 'Parent' : `P=${mutationPlan[idx].toFixed(1)}`; 
+    cell.appendChild(badge); 
+    cell.addEventListener('click', () => {
+      if(idx===0) { // Parent click re-generates children
+        renderGrid();
+      } else { // Child click updates parent
+        history.push({ svgs: svgs.slice(), genotype: deep(parentGen) });
+        parentGen = g;
+        renderGrid();
+      }
+    });
     gridEl.appendChild(cell);
   });
+  history.push({ svgs: svgs.slice(), genotype: deep(parentGen) });
 }
 
-document.getElementById('saveSvg').addEventListener('click', ()=>{
-  const svg=genotypeToSvgElement(parentGen,2048); const s=new XMLSerializer().serializeToString(svg); const blob=new Blob([s],{type:'image/svg+xml'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='evo.svg'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+// Export handlers (2k resolution)
+document.getElementById('saveSvg').addEventListener('click', () => {
+  const svg = genotypeToSvgElement(parentGen, 2048);
+  const s = new XMLSerializer().serializeToString(svg);
+  const blob = new Blob([s], {type:'image/svg+xml'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'evo.svg';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 });
-
-document.getElementById('savePng').addEventListener('click', ()=>{
-  const svg=genotypeToSvgElement(parentGen,2048); const s=new XMLSerializer().serializeToString(svg); const img=new Image(); const blob=new Blob([s],{type:'image/svg+xml'}); const url=URL.createObjectURL(blob); img.onload=()=>{ const c=document.createElement('canvas'); c.width=2048; c.height=2048; const ctx=c.getContext('2d'); ctx.drawImage(img,0,0); c.toBlob(b=>{ const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download='evo.png'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(u); }, 'image/png'); URL.revokeObjectURL(url); }; img.src=url;
+document.getElementById('savePng').addEventListener('click', () => {
+  const svg = genotypeToSvgElement(parentGen, 2048);
+  const s = new XMLSerializer().serializeToString(svg);
+  const img = new Image();
+  const blob = new Blob([s], {type:'image/svg+xml'});
+  const url = URL.createObjectURL(blob);
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = 2048;
+    c.height = 2048;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = parentGen.globals.background !== 'transparent' ? parentGen.globals.background : '#ffffff';
+    ctx.fillRect(0, 0, 2048, 2048);
+    ctx.drawImage(img, 0, 0);
+    c.toBlob(b => {
+      const u = URL.createObjectURL(b);
+      const a = document.createElement('a');
+      a.href = u;
+      a.download = 'evo.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(u);
+    }, 'image/png');
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
 });
-
-document.getElementById('randomize').addEventListener('click', ()=>{ parentGen=randomGenotype(); renderGrid(); });
+document.getElementById('randomize').addEventListener('click', () => { 
+  parentGen = randomGenotype(); 
+  renderGrid(); 
+});
+document.getElementById('undo').addEventListener('click', () => {
+  if(history.length > 1) {
+    history.pop(); // Remove current
+    const prev = history[history.length - 1];
+    parentGen = deep(prev.genotype);
+    clearGrid();
+    prev.svgs.forEach((svgStr, idx) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      if(idx === 0) cell.style.outline = '2px solid rgba(110,231,183,.12)';
+      const parser = new DOMParser();
+      const svgEl = parser.parseFromString(svgStr, 'image/svg+xml').documentElement;
+      svgEl.setAttribute('width', '100%');
+      svgEl.setAttribute('height', '100%');
+      cell.appendChild(svgEl);
+      const badge = document.createElement('div');
+      badge.className = 'badge';
+      badge.textContent = idx === 0 ? 'Parent' : `P=${mutationPlan[idx].toFixed(1)}`;
+      cell.appendChild(badge);
+      cell.addEventListener('click', () => {
+        if(idx === 0) {
+          renderGrid();
+        } else {
+          history.push({ svgs: prev.svgs.slice(), genotype: deep(parentGen) });
+          parentGen = mutateGenotype(parentGen, mutationPlan[idx]);
+          renderGrid();
+        }
+      });
+      gridEl.appendChild(cell);
+    });
+  }
+});
 
 renderGrid();
 </script>
 </body>
 </html>
-
