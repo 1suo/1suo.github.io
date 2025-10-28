@@ -16,4 +16,4 @@
 
 ***
 
-[Шаблон этого сайта](https://github.com/1suo/site)
+[Шаблон этого сайта](https://github.com/1suo/simple-site)
