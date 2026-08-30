@@ -1,8 +1,10 @@
 window.onload = function () {
-  // let dark = "🌚";
-  // let light = "🌞";
-  let dark = "dark";
-  let light = "light";
+  let dark = "🌚";
+  let light = "🌞";
+  // let dark = "☾";
+  // let light = "☀ ";
+  // let dark = "dark";
+  // let light = "light";
   let theme = window.matchMedia("(prefers-color-scheme: dark)").matches
     ? dark
     : "light";
