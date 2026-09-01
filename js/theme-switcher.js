@@ -9,12 +9,10 @@ window.onload = function () {
     ? dark
     : "light";
   let body = document.documentElement;
-  let nav = document.getElementsByTagName("nav")[0];
-
   let button = document.getElementById("theme-switcher");
+  button.hidden = false;
   button.style.cursor = "pointer";
   button.innerText = theme == dark ? light : dark;
-  button.style.float = "right";
   setTheme(theme);
 
   button.addEventListener("click", () => {
@@ -22,36 +20,42 @@ window.onload = function () {
   });
 
   function setTheme(target) {
+    body.style.colorScheme = target === dark ? "dark" : "light";
     if (target === dark) {
       theme = dark;
       body.style.backgroundColor = "black";
-      body.style.color = "beige";
-      // nav.style.backgroundColor = "black";
-      // nav.style.color = "white";
-      // nav.style.borderColor = "#202020";
-
+      body.style.setProperty("--sidebar-background", "black");
+      body.style.setProperty("--body-color", "gainsboro");
+      body.style.color = "gainsboro";
+      body.style.setProperty("--color", "gold");
+      body.style.setProperty("--hover", "yellow");
+      body.style.setProperty("--visited", "darkkhaki");
+      // h2.style.color = "red";
       const links = document.querySelectorAll("a");
       links.forEach((link) => {
-        link.style.setProperty("--color", "springgreen");
+        link.style.setProperty("--color", "gold");
         link.style.setProperty("--hover", "yellow");
-        link.style.setProperty("--visited", "magenta");
+        link.style.setProperty("--visited", "darkkhaki");
       });
       button.innerText = light;
+      button.setAttribute("aria-label", "Use light theme");
     } else {
       theme = light;
-      body.style.backgroundColor = "whitesmoke";
+      body.style.backgroundColor = "gainsboro";
+      body.style.setProperty("--sidebar-background", "gainsboro");
+      body.style.setProperty("--body-color", "black");
       body.style.color = "black";
-      // nav.style.backgroundColor = "whitesmoke";
-      // nav.style.color = "black";
-      // nav.style.borderColor = "gainsboro";
-
+      body.style.setProperty("--color", "mediumblue");
+      body.style.setProperty("--hover", "dodgerblue");
+      body.style.setProperty("--visited", "darkorchid");
       const links = document.querySelectorAll("a");
       links.forEach((link) => {
-        link.style.setProperty("--color", "blue");
-        link.style.setProperty("--hover", "cyan");
-        link.style.setProperty("--visited", "magenta");
+        link.style.setProperty("--color", "mediumblue");
+        link.style.setProperty("--hover", "dodgerblue");
+        link.style.setProperty("--visited", "darkorchid");
       });
       button.innerText = dark;
+      button.setAttribute("aria-label", "Use dark theme");
     }
   }
 };

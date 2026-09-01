@@ -3,14 +3,19 @@ html {
   background-repeat: repeat;
 }
 body {
-  font-family: "PT Serif", serif;
+  background: transparent;
+  color: inherit;
+  font-family: "PT Sans", serif;
   height: 100vh;
+  margin: 0;
 }
 code {
-  font-family: "JetBrains Mono", monospace;
+  font-family: "PT Mono", monospace;
+  /* font-family: "JetBrains Mono", monospace; */
 }
 header,
 footer {
+  /* font-family: "PT Mono", monospace; */
   font-family: "PT Serif Caption", serif;
 }
 header {
@@ -21,8 +26,22 @@ header {
   /* justify-content: center; */
   font-size: 1rem;
 }
-main {
-  padding-top: 3rem;
+body main {
+  margin: 0;
+  max-width: none;
+  padding-top: 0;
+  position: static;
+}
+body .content,
+body .markdown-section {
+  background: transparent;
+  color: inherit;
+}
+body .markdown-section {
+  padding-top: 5rem;
+}
+body .content {
+  margin-left: 332px;
 }
 nav {
   position: fixed;
@@ -41,6 +60,8 @@ h3,
 h4,
 h5,
 h6 {
+  color: inherit;
+  font-family: "PT Serif", serif;
   margin-bottom: 1rem;
 }
 code {
@@ -48,28 +69,33 @@ code {
   font-size: 1rem;
   padding: 0.1rem 0.4rem;
   margin: 0.3rem;
+  background-color: #77777755;
+  opacity: 0.9;
+  border-style: none;
+}
+pre {
+  padding: 1rem;
+  background: none;
+  border-radius: 8px;
   background-color: #77777733;
+  opacity: 0.9;
 }
 pre code {
   padding: 0;
   margin: 0;
   font-size: 1rem;
   background: none;
-}
-pre {
-  padding: 1rem;
-  background: none;
-  border-radius: 8px;
-  background-color: #77777722;
+  border-style: none;
+  opacity: 1;
 }
 blockquote {
   border-radius: 8px;
-  background-color: #77777722;
-  opacity: 0.7;
+  background-color: #77777733;
+  opacity: 0.9;
   font-style: italic;
   padding: 1rem;
   margin: 1rem 0;
-  border-left: 4px solid #77777766;
+  /* border-left: 4px solid #77777766; */
 }
 h1 a,
 h2 a,
@@ -103,6 +129,268 @@ mark {
   color: #0000ff;
   padding: 0.1rem 0.6rem;
   border-radius: 18px;
+}
+
+button.hashtag {
+  background-color: color-mix(in srgb, var(--color, currentColor) 12%, transparent);
+  font-size: 1rem !important;
+  border: 0;
+  border-radius: 18px;
+  color: var(--color, currentColor);
+  cursor: pointer;
+  font: inherit;
+  padding: 0.1rem 0.6rem;
+  white-space: nowrap;
+}
+
+body .sidebar {
+  /* background: Canvas; */
+  background: var(--sidebar-background);
+  color: var(--body-color);
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: 8px;
+  bottom: 1rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  font-style: normal;
+  left: 1rem;
+  max-width: none;
+  overflow-y: auto;
+  position: fixed;
+  right: auto;
+  top: 1rem;
+  width: 300px;
+  z-index: 20;
+}
+
+.sidebar-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  padding: 1rem 1rem 0;
+}
+
+.sidebar-actions button,
+.sidebar-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  display: inline-flex;
+  font: inherit;
+  height: 2.5rem;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  width: 2.5rem;
+}
+
+.sidebar-actions button {
+  font-size: 1.25rem;
+}
+
+.sidebar-actions button:hover,
+.sidebar-actions button:focus-visible,
+.sidebar-toggle:hover,
+.sidebar-toggle:focus-visible {
+  opacity: 0.65;
+}
+
+.sidebar-close {
+  display: none !important;
+  font-size: 1.75rem !important;
+  line-height: 1;
+}
+
+.sidebar .search {
+  border-bottom: 0;
+  margin: 0;
+  padding: 1rem;
+}
+
+.sidebar .search .input-wrap {
+  position: relative;
+}
+
+.sidebar .search input[type="search"] {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  border: 0;
+  color: inherit;
+  padding-right: 2.5rem;
+  width: 100%;
+}
+
+.sidebar .search input[type="search"]:focus {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  box-shadow: none;
+  outline: none;
+}
+
+.sidebar .search a {
+  /* color: var(--color, currentColor); */
+}
+
+.sidebar .search .matching-post {
+  border-bottom: 1px solid #77777777;
+  padding: 0.75rem 0;
+}
+
+.sidebar .search .matching-post:last-child {
+  border-bottom: 0;
+}
+
+.sidebar .search .matching-post h2,
+.sidebar .search .matching-post p {
+  margin: 0;
+}
+
+.sidebar .search .matching-post p {
+  margin-top: 0.5rem;
+}
+
+.sidebar .search .clear-button {
+  cursor: pointer;
+  inset: 0 0 0 auto;
+  place-items: center;
+  position: absolute;
+  width: 2.5rem;
+}
+
+.sidebar .search .clear-button.show {
+  display: grid;
+}
+
+.sidebar .search .clear-button svg {
+  display: none;
+}
+
+.sidebar .search .clear-button::before,
+.sidebar .search .clear-button::after {
+  background: currentColor;
+  content: "";
+  grid-area: 1 / 1;
+  height: 1px;
+  width: 1rem;
+}
+
+.sidebar .search .clear-button::before {
+  transform: rotate(45deg);
+}
+
+.sidebar .search .clear-button::after {
+  transform: rotate(-45deg);
+}
+
+.sidebar .clear-button circle {
+  fill: none;
+}
+
+.sidebar .clear-button path {
+  stroke: currentColor;
+}
+
+.sidebar .sidebar-nav {
+  padding: 0 1rem 1rem;
+}
+
+.sidebar > footer {
+  color: inherit;
+  font-size: 0.8rem;
+  margin-top: auto;
+  padding: 0 1rem 1rem;
+  text-align: center;
+}
+
+.sidebar > footer p {
+  margin: 0;
+}
+
+.sidebar-toggle {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  body .content {
+    margin-left: 0;
+  }
+
+  body .markdown-section {
+    box-sizing: border-box;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  body .sidebar {
+    bottom: auto;
+    left: 50%;
+    max-height: calc(100dvh - 2rem);
+    opacity: 0;
+    pointer-events: none;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.98);
+    visibility: hidden;
+    width: min(30rem, calc(100vw - 2rem));
+  }
+
+  body .sidebar.sidebar-open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+    visibility: visible;
+  }
+
+  body .content,
+  body.close .content {
+    left: 0;
+    transform: none;
+  }
+
+  .sidebar-toggle {
+    display: block;
+    left: 0.5rem;
+    position: fixed;
+    top: 0.5rem;
+    z-index: 30;
+  }
+
+  body.sidebar-is-open::before {
+    backdrop-filter: blur(2px);
+    content: "";
+    inset: 0;
+    position: fixed;
+    z-index: 19;
+  }
+
+  body.sidebar-is-open .sidebar-toggle {
+    display: none;
+  }
+
+  .sidebar-close {
+    display: inline-flex !important;
+  }
+}
+
+dl dt {
+  font-weight: bold;
+}
+
+dl dd {
+  margin-bottom: 0.5rem;
+}
+
+.footnote-ref {
+  margin-left: 0.1em;
+}
+
+.footnotes {
+  font-size: 0.9em;
+  margin-top: 2rem;
+}
+
+.footnote-backref {
+  text-decoration: none;
 }
 
 .fa-brands,
