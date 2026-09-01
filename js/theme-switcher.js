@@ -31,12 +31,6 @@ window.onload = function () {
       body.style.setProperty("--hover", "yellow");
       body.style.setProperty("--visited", "darkkhaki");
       // h2.style.color = "red";
-      const links = document.querySelectorAll("a");
-      links.forEach((link) => {
-        link.style.setProperty("--color", "gold");
-        link.style.setProperty("--hover", "yellow");
-        link.style.setProperty("--visited", "darkkhaki");
-      });
       button.innerText = light;
       button.setAttribute("aria-label", "Use light theme");
     } else {
@@ -48,12 +42,6 @@ window.onload = function () {
       body.style.setProperty("--color", "mediumblue");
       body.style.setProperty("--hover", "dodgerblue");
       body.style.setProperty("--visited", "darkorchid");
-      const links = document.querySelectorAll("a");
-      links.forEach((link) => {
-        link.style.setProperty("--color", "mediumblue");
-        link.style.setProperty("--hover", "dodgerblue");
-        link.style.setProperty("--visited", "darkorchid");
-      });
       button.innerText = dark;
       button.setAttribute("aria-label", "Use dark theme");
     }

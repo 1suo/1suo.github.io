@@ -4,14 +4,15 @@
   if (typeof module === "object" && module.exports) module.exports = api;
   if (root) root.MarkdownExtensions = api;
 })(typeof window !== "undefined" ? window : globalThis, function () {
-  function transform(markdown) {
+  function transform(markdown, options) {
     const protectedParts = [];
+    const route = options && options.route ? options.route : "";
     let source = protectFencedCode(markdown, protectedParts);
 
     source = protect(source, /(`+)[\s\S]*?\1/g, protectedParts);
     source = protect(source, /(\]\()([^\n)]*)(\))/g, protectedParts);
     source = renderDefinitionLists(source);
-    source = renderFootnotes(source);
+    source = renderFootnotes(source, route);
     source = protect(source, /<!--[\s\S]*?-->|<\/?[A-Za-z][^>]*>/g, protectedParts);
     source = renderInlineExtensions(source);
 
@@ -113,7 +114,7 @@
     );
   }
 
-  function renderFootnotes(source) {
+  function renderFootnotes(source, route) {
     const definitions = new Map();
     const lines = source.split("\n");
     const body = [];
@@ -143,8 +144,8 @@
         id +
         "-" +
         count +
-        '"><a href="#footnote-' +
-        id +
+        '"><a href="' +
+        footnoteHref(route, "footnote-" + id) +
         '" aria-label="Footnote ' +
         escapeHtml(label) +
         '">' +
@@ -169,9 +170,9 @@
             id +
             '">' +
             entry[1] +
-            ' <a class="footnote-backref" href="#footnote-ref-' +
-            id +
-            '-1" aria-label="Back to content">↩</a></li>'
+            ' <a class="footnote-backref" href="' +
+            footnoteHref(route, "footnote-ref-" + id + "-1") +
+            '" aria-label="Back to content">↩</a></li>'
           );
         })
         .join("\n") +
@@ -182,6 +183,10 @@
 
   function footnoteId(label) {
     return encodeURIComponent(label).replace(/%/g, "-");
+  }
+
+  function footnoteHref(route, id) {
+    return route ? route + "?id=" + id : "#" + id;
   }
 
   function escapeHtml(value) {

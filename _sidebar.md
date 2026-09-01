@@ -1,6 +1,6 @@
-- [Home](/)
+- [Главная](/)
 
-- Keyboards and layouts
+- Клавиатуры и раскладки
   - [РСТВ](/md/rstv.md)
   - [Rowmance](/md/rowmance.md)
   - [Rowgasm](/md/rowgasm.md)

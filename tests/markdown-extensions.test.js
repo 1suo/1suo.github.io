@@ -34,11 +34,14 @@ test("renders definition lists", function () {
 });
 
 test("renders referenced footnotes with a backlink", function () {
-  const result = transform("Text[^note].\n\n[^note]: More #detail.");
+  const result = transform("Text[^note].\n\n[^note]: More #detail.", {
+    route: "#/md/page",
+  });
 
   assert.match(result, /<sup class="footnote-ref" id="footnote-ref-note-1">/);
+  assert.match(result, /href="#\/md\/page\?id=footnote-note"/);
   assert.match(result, /<li id="footnote-note">More <button class="hashtag"[^>]+>#detail<\/button>\./);
-  assert.match(result, /href="#footnote-ref-note-1"/);
+  assert.match(result, /href="#\/md\/page\?id=footnote-ref-note-1"/);
   assert.doesNotMatch(result, /\[\^note\]:/);
 });
 

@@ -38,6 +38,7 @@ body .markdown-section {
   color: inherit;
 }
 body .markdown-section {
+  padding-bottom: 5rem;
   padding-top: 5rem;
 }
 body .content {
@@ -159,6 +160,7 @@ body .sidebar {
   overflow-y: auto;
   position: fixed;
   right: auto;
+  text-align: left;
   top: 1rem;
   width: 300px;
   z-index: 20;
@@ -229,7 +231,15 @@ body .sidebar {
 }
 
 .sidebar .search a {
-  /* color: var(--color, currentColor); */
+  color: var(--color);
+}
+
+.sidebar .search a:hover {
+  color: var(--hover);
+}
+
+.sidebar .search a:visited {
+  color: var(--visited);
 }
 
 .sidebar .search .matching-post {
@@ -295,12 +305,15 @@ body .sidebar {
   padding: 0 1rem 1rem;
 }
 
+.sidebar .sidebar-nav ul {
+  padding-left: 1rem;
+}
+
 .sidebar > footer {
   color: inherit;
   font-size: 0.8rem;
   margin-top: auto;
   padding: 0 1rem 1rem;
-  text-align: center;
 }
 
 .sidebar > footer p {
@@ -312,6 +325,13 @@ body .sidebar {
 }
 
 @media (max-width: 768px) {
+  body > footer {
+    box-sizing: border-box;
+    color: var(--body-color);
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
   body .content {
     margin-left: 0;
   }

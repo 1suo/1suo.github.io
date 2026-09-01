@@ -4,6 +4,7 @@ window.$docsify = {
   hideSidebar: false,
   homepage: "_index.md",
   maxLevel: 0,
+  subMaxLevel: 3,
   search: {
     paths: [
       "/",
@@ -20,7 +21,8 @@ window.$docsify = {
   plugins: [
     function (hook) {
       hook.beforeEach(function (markdown) {
-        return window.MarkdownExtensions.transform(markdown);
+        const route = window.location.hash.split("?")[0] || "#/";
+        return window.MarkdownExtensions.transform(markdown, { route: route });
       });
 
       hook.ready(function () {
@@ -47,7 +49,16 @@ window.$docsify = {
         }
 
         if (sidebar && footer) {
-          sidebar.appendChild(footer);
+          const mobileFooter = window.matchMedia("(max-width: 768px)");
+          const placeFooter = function () {
+            if (mobileFooter.matches) {
+              document.body.insertBefore(footer, document.body.querySelector("script"));
+            } else {
+              sidebar.appendChild(footer);
+            }
+          };
+          placeFooter();
+          mobileFooter.addEventListener("change", placeFooter);
         }
 
         function setSidebarOpen(open) {
