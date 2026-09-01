@@ -1,49 +1,63 @@
-window.onload = function () {
-  let dark = "🌚";
-  let light = "🌞";
-  // let dark = "☾";
-  // let light = "☀ ";
-  // let dark = "dark";
-  // let light = "light";
-  let theme = window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? dark
-    : "light";
-  let body = document.documentElement;
-  let button = document.getElementById("theme-switcher");
-  button.hidden = false;
-  button.style.cursor = "pointer";
-  button.innerText = theme == dark ? light : dark;
-  setTheme(theme);
+(function () {
+  const root = document.documentElement;
+  const themes = {
+    dark: {
+      background: "black",
+      body: "gainsboro",
+      color: "gold",
+      hover: "yellow",
+      visited: "darkkhaki",
+      icon: "🌞",
+      label: "Use light theme",
+    },
+    light: {
+      background: "gainsboro",
+      body: "black",
+      color: "mediumblue",
+      hover: "dodgerblue",
+      visited: "darkorchid",
+      icon: "🌚",
+      label: "Use dark theme",
+    },
+  };
+  const savedTheme = localStorage.getItem("theme");
+  let theme =
+    savedTheme === "dark" || savedTheme === "light"
+      ? savedTheme
+      : window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+  let button;
 
-  button.addEventListener("click", () => {
-    setTheme(theme == dark ? light : dark);
-  });
+  function setTheme(name, persist) {
+    const values = themes[name];
+    theme = name;
+    root.dataset.theme = name;
+    root.style.colorScheme = name;
+    root.style.backgroundColor = values.background;
+    root.style.color = values.body;
+    root.style.setProperty("--sidebar-background", values.background);
+    root.style.setProperty("--body-color", values.body);
+    root.style.setProperty("--link-color", values.color);
+    root.style.setProperty("--link-hover", values.hover);
+    root.style.setProperty("--link-visited", values.visited);
 
-  function setTheme(target) {
-    body.style.colorScheme = target === dark ? "dark" : "light";
-    if (target === dark) {
-      theme = dark;
-      body.style.backgroundColor = "black";
-      body.style.setProperty("--sidebar-background", "black");
-      body.style.setProperty("--body-color", "gainsboro");
-      body.style.color = "gainsboro";
-      body.style.setProperty("--color", "gold");
-      body.style.setProperty("--hover", "yellow");
-      body.style.setProperty("--visited", "darkkhaki");
-      // h2.style.color = "red";
-      button.innerText = light;
-      button.setAttribute("aria-label", "Use light theme");
-    } else {
-      theme = light;
-      body.style.backgroundColor = "gainsboro";
-      body.style.setProperty("--sidebar-background", "gainsboro");
-      body.style.setProperty("--body-color", "black");
-      body.style.color = "black";
-      body.style.setProperty("--color", "mediumblue");
-      body.style.setProperty("--hover", "dodgerblue");
-      body.style.setProperty("--visited", "darkorchid");
-      button.innerText = dark;
-      button.setAttribute("aria-label", "Use dark theme");
+    if (button) {
+      button.textContent = values.icon;
+      button.setAttribute("aria-label", values.label);
     }
+    if (persist) localStorage.setItem("theme", name);
   }
-};
+
+  setTheme(theme, false);
+
+  document.addEventListener("DOMContentLoaded", function () {
+    button = document.getElementById("theme-switcher");
+    if (!button) return;
+    button.hidden = false;
+    button.addEventListener("click", function () {
+      setTheme(theme === "dark" ? "light" : "dark", true);
+    });
+    setTheme(theme, false);
+  });
+})();

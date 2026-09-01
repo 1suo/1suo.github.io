@@ -73,10 +73,10 @@ nav li:last-child {
   margin-right: 0;
 }
 nav a:visited {
-  color: var(--visited);
+  color: #ff00cc;
 }
 nav a:hover {
-  color: var(--hover);
+  color: #00ff00;
 }
 
 ul,
@@ -307,29 +307,49 @@ article header h2 + p {
 }
 article header h1 a,
 article header h2 a {
-  color: var(--color);
+  color: white;
 }
 article header h1 a:visited,
 article header h2 a:visited {
-  color: var(--visited);
+  color: #444444;
 }
 article header h1 a:visited:hover,
 article header h2 a:visited:hover {
-  color: var(--hover);
+  color: #ff00cc;
 }
 article > footer {
   margin-top: 1.5em;
   font-size: 0.85em;
 }
 
-a {
-  color: var(--color);
+@media (prefers-color-scheme: dark) {
+  a {
+    --color: springgreen;
+    --hover: yellow;
+    --visited: magenta;
+    color: var(--color);
+  }
+  a:hover {
+    color: var(--hover);
+  }
+  a:visited {
+    color: var(--visited);
+  }
+
 }
-a:hover {
-  color: var(--hover);
-}
-a:visited {
-  color: var(--visited);
+@media (prefers-color-scheme: light) {
+  a {
+    --color: blue;
+    --hover: cyan;
+    --visited: magenta;
+    color: var(--color);
+  }
+  a:hover {
+    color: var(--hover);
+  }
+  a:visited {
+    color: var(--visited);
+  }
 }
 
 a:hover,
