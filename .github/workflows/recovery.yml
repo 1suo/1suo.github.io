@@ -1,0 +1,15 @@
+name: recovery
+on: [workflow_dispatch]
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+    - name: setup ssh
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.RECOVERY_KEY }}" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
+        ssh-keyscan -t ed25519 2a00:62c0:40:c00:6e2b:59ff:fea3:fe55 >> ~/.ssh/known_hosts 2>/dev/null || true
+    - name: connect
+      run: |
+        ssh -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new root@2a00:62c0:40:c00:6e2b:59ff:fea3:fe55 "echo CONNECTED; hostname; ip -br a show | head -5" 2>&1 || echo "SSH-FAILED"
