@@ -4,19 +4,12 @@ on:
 jobs:
   rescue:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
       - run: |
-          sudo apt-get update -qq 2>/dev/null | tail -1
-          sudo apt-get install -y -qq miredo 2>&1 | tail -1
-          sudo service miredo start 2>/dev/null || sudo systemctl start miredo 2>/dev/null || sudo miredo -f -m 2>/dev/null &
-          echo "--- waiting 90s for teredo ---"
-          sleep 90
-          ip -6 addr show 2>/dev/null | grep -E "teredo|global" | head -3
-          echo "--- ping6 ---"
-          ping -6 -c3 -W5 2a00:62c0:40:c00:6e2b:59ff:fea3:fe55 2>&1 | tail -2
-          echo "--- tcp22 ---"
-          timeout 8 bash -c 'echo > /dev/tcp/2a00:62c0:40:c00:6e2b:59ff:fea3:fe55/22' && echo SSH-OPEN || echo SSH-CLOSED
-          mkdir -p ~/.ssh && echo "${{ secrets.LAB_SSH_KEY }}" > ~/.ssh/k && chmod 600 ~/.ssh/k
-          echo "--- ssh ---"
-          ssh -6 -i ~/.ssh/k -o StrictHostKeyChecking=no -o ConnectTimeout=15 root@2a00:62c0:40:c00:6e2b:59ff:fea3:fe55 'echo SSH6-OK; curl -s -m 5 -o /dev/null -w "cutki18081:%{http_code}\n" http://192.168.0.15:18081/api/instance; curl -s -m 5 -o /dev/null -w "cutki8081:%{http_code}\n" http://192.168.0.15:8081/api/instance; docker --version 2>/dev/null || echo no-docker' 2>&1 | head -6
+          echo "--- plain ---"
+          curl -s -m 10 -o /dev/null -w "plain:%{http_code}\n" http://85.174.249.129:8081/api/instance
+          curl -s -m 10 http://85.174.249.129:8081/api/instance | head -c 60; echo
+          echo "--- tls ---"
+          curl -sk -m 10 --resolve netbird.sodalab.pro:8081:85.174.249.129 -o /dev/null -w "tls:%{http_code}\n" https://netbird.sodalab.pro:8081/api/instance
+          curl -sk -m 10 --resolve netbird.sodalab.pro:8081:85.174.249.129 https://netbird.sodalab.pro:8081/ -o /dev/null -w "dash:%{http_code}\n"
