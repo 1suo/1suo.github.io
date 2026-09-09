@@ -1,10 +1,6 @@
 name: lab-rescue
 on:
   workflow_dispatch:
-    inputs:
-      cmd:
-        description: 'command to run on .121'
-        default: 'hostname; uptime; ip -4 addr show scope global | head -3; echo ---LAN---; ping -c2 -W2 192.168.0.15; echo ---CUTKI8081---; timeout 5 bash -c "echo > /dev/tcp/192.168.0.15/8081" && echo CUTKI-8081-OPEN || echo CUTKI-8081-CLOSED'
 jobs:
   rescue:
     runs-on: ubuntu-latest
@@ -12,13 +8,15 @@ jobs:
     steps:
       - run: |
           sudo apt-get update -qq 2>/dev/null | tail -1
-          sudo apt-get install -y -qq miredo openssh-client 2>&1 | tail -1
-          sudo systemctl start miredo 2>/dev/null || sudo service miredo start 2>/dev/null || sudo miredo 2>/dev/null
-          sleep 12
-          echo "--- v6 addr ---"
-          ip -6 addr show scope global | head -4 || true
-          mkdir -p ~/.ssh && echo "${{ secrets.LAB_SSH_KEY }}" > ~/.ssh/k && chmod 600 ~/.ssh/k
+          sudo apt-get install -y -qq miredo 2>&1 | tail -1
+          sudo service miredo start 2>/dev/null || sudo systemctl start miredo 2>/dev/null || sudo miredo -f -m 2>/dev/null &
+          echo "--- waiting 90s for teredo ---"
+          sleep 90
+          ip -6 addr show 2>/dev/null | grep -E "teredo|global" | head -3
           echo "--- ping6 ---"
-          ping -6 -c2 -W5 2a00:62c0:40:c00:6e2b:59ff:fea3:fe55 || true
+          ping -6 -c3 -W5 2a00:62c0:40:c00:6e2b:59ff:fea3:fe55 2>&1 | tail -2
+          echo "--- tcp22 ---"
+          timeout 8 bash -c 'echo > /dev/tcp/2a00:62c0:40:c00:6e2b:59ff:fea3:fe55/22' && echo SSH-OPEN || echo SSH-CLOSED
+          mkdir -p ~/.ssh && echo "${{ secrets.LAB_SSH_KEY }}" > ~/.ssh/k && chmod 600 ~/.ssh/k
           echo "--- ssh ---"
-          ssh -6 -i ~/.ssh/k -o StrictHostKeyChecking=no -o ConnectTimeout=15 root@2a00:62c0:40:c00:6e2b:59ff:fea3:fe55 "${{ inputs.cmd }}"
+          ssh -6 -i ~/.ssh/k -o StrictHostKeyChecking=no -o ConnectTimeout=15 root@2a00:62c0:40:c00:6e2b:59ff:fea3:fe55 'echo SSH6-OK; curl -s -m 5 -o /dev/null -w "cutki18081:%{http_code}\n" http://192.168.0.15:18081/api/instance; curl -s -m 5 -o /dev/null -w "cutki8081:%{http_code}\n" http://192.168.0.15:8081/api/instance; docker --version 2>/dev/null || echo no-docker' 2>&1 | head -6
