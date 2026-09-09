@@ -4,17 +4,21 @@ on:
     inputs:
       cmd:
         description: 'command to run on .121'
-        default: 'hostname; uptime; ip -4 addr show scope global | head -5'
+        default: 'hostname; uptime; ip -4 addr show scope global | head -3; echo ---LAN---; ping -c2 -W2 192.168.0.15; echo ---CUTKI8081---; timeout 5 bash -c "echo > /dev/tcp/192.168.0.15/8081" && echo CUTKI-8081-OPEN || echo CUTKI-8081-CLOSED'
 jobs:
   rescue:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - run: |
+          sudo apt-get update -qq 2>/dev/null | tail -1
+          sudo apt-get install -y -qq miredo openssh-client 2>&1 | tail -1
+          sudo systemctl start miredo 2>/dev/null || sudo service miredo start 2>/dev/null || sudo miredo 2>/dev/null
+          sleep 12
+          echo "--- v6 addr ---"
+          ip -6 addr show scope global | head -4 || true
           mkdir -p ~/.ssh && echo "${{ secrets.LAB_SSH_KEY }}" > ~/.ssh/k && chmod 600 ~/.ssh/k
           echo "--- ping6 ---"
-          ping -6 -c2 -W4 2a00:62c0:40:c00:6e2b:59ff:fea3:fe55 || true
-          echo "--- tcp22 ---"
-          timeout 6 bash -c 'echo > /dev/tcp/2a00:62c0:40:c00:6e2b:59ff:fea3:fe55/22' && echo SSH-OPEN || echo SSH-CLOSED
+          ping -6 -c2 -W5 2a00:62c0:40:c00:6e2b:59ff:fea3:fe55 || true
           echo "--- ssh ---"
-          ssh -6 -i ~/.ssh/k -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@2a00:62c0:40:c00:6e2b:59ff:fea3:fe55 "${{ inputs.cmd }}"
+          ssh -6 -i ~/.ssh/k -o StrictHostKeyChecking=no -o ConnectTimeout=15 root@2a00:62c0:40:c00:6e2b:59ff:fea3:fe55 "${{ inputs.cmd }}"
