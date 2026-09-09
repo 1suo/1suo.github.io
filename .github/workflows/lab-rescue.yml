@@ -1,0 +1,20 @@
+name: lab-rescue
+on:
+  workflow_dispatch:
+    inputs:
+      cmd:
+        description: 'command to run on .121'
+        default: 'hostname; uptime; ip -4 addr show scope global | head -5'
+jobs:
+  rescue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: |
+          mkdir -p ~/.ssh && echo "${{ secrets.LAB_SSH_KEY }}" > ~/.ssh/k && chmod 600 ~/.ssh/k
+          echo "--- ping6 ---"
+          ping -6 -c2 -W4 2a00:62c0:40:c00:6e2b:59ff:fea3:fe55 || true
+          echo "--- tcp22 ---"
+          timeout 6 bash -c 'echo > /dev/tcp/2a00:62c0:40:c00:6e2b:59ff:fea3:fe55/22' && echo SSH-OPEN || echo SSH-CLOSED
+          echo "--- ssh ---"
+          ssh -6 -i ~/.ssh/k -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@2a00:62c0:40:c00:6e2b:59ff:fea3:fe55 "${{ inputs.cmd }}"
