@@ -1,0 +1,37 @@
+name: rudesk-fix
+on: [workflow_dispatch]
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: setup
+      run: |
+        apt-get update -qq
+        apt-get install -y -qq xvfb xdotool libgtk-3-0t64 wget
+        Xvfb :99 -screen 0 1280x720x24 &
+        export DISPLAY=:99
+        sleep 2
+        wget -q https://github.com/rudesktop/rudesktop/releases/download/3.0.1563/rudesktop-3.0.1563-amd64.deb -O /tmp/rd.deb 2>/dev/null || \
+        wget -q "https://rudesktop.ru/download/rudesktop-amd64.deb" -O /tmp/rd.deb 2>/dev/null || \
+        echo "download failed"
+        ls -la /tmp/rd.deb
+        dpkg -i /tmp/rd.deb 2>/dev/null || apt-get install -f -y -qq
+        which rudesktop || find / -name "rudesktop" -type f 2>/dev/null | head -1
+    - name: connect
+      run: |
+        export DISPLAY=:99
+        mkdir -p ~/.config/rudesktop/peers
+        echo "password = [106,114,105,106,112,104]" > ~/.config/rudesktop/peers/161938828.toml
+        rudesktop --connect 161938828 &
+        sleep 15
+        xdotool search --name "rudesktop" | head -1
+        echo "waiting for connection..."
+        sleep 15
+        xdotool key --window $(xdotool search --name "rudesktop" | head -1) Return
+        sleep 10
+        echo "sending fix command..."
+        xdotool type --delay 50 'echo "127.0.0.1 85.174.249.129" >> /etc/hosts && docker restart netbird-client'
+        xdotool key Return
+        sleep 15
+        echo "command sent"
