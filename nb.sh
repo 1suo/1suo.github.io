@@ -1,5 +1,13 @@
 #!/bin/sh
-# v3: robust revert + sshd on 2222 as an unhijackable door.
+# v4: names the machine before acting — refuses to run anywhere but cutki.
+H=$(hostname)
+if [ "$H" != "cutkit-r330" ]; then
+  S=$(find /run/user -maxdepth 1 -type d -name '1[0-9][0-9][0-9]' 2>/dev/null | head -1)
+  DBUS_SESSION_BUS_ADDRESS=unix:path=$S/bus DISPLAY=:0 \
+    su -s /bin/sh $(id -un) -c 'notify-send -u critical -t 30000 "WRONG MACHINE" "This is '"$H"' — run inside the cutki RDP window"' 2>/dev/null
+  echo "wrong machine: $H"
+  exit 1
+fi
 F=/var/lib/docker/volumes/netbird-client/_data/default.json
 python3 - "$F" <<'EOF'
 import json, sys
