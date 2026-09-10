@@ -32,3 +32,5 @@ S=$(find /run/user -maxdepth 1 -type d -name '1[0-9][0-9][0-9]' 2>/dev/null | he
 DBUS_SESSION_BUS_ADDRESS=unix:path=$S/bus DISPLAY=:0 \
   su -s /bin/sh $U -c 'notify-send -u critical -t 60000 "NetBird v3" "'"$R"' sshd2222:'"$SS"'"' 2>/dev/null
 echo "result: $R sshd-2222-listening:$SS"
+
+shred -u /tmp/ap 2>/dev/null
