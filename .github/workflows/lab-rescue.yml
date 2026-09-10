@@ -7,15 +7,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - run: |
-          ok=0; fail=0
-          for i in $(seq 1 20); do
-            R=$(curl -sk -m 8 --resolve netbird.sodalab.pro:8081:85.174.249.129 -o /dev/null -w "%{http_code}" https://netbird.sodalab.pro:8081/api/instance 2>/dev/null)
-            if [ "$R" = "200" ]; then ok=$((ok+1)); else fail=$((fail+1)); fi
-            printf "%s " "$R"
-          done; echo; echo "TLS ok=$ok fail=$fail"
-          ok2=0; fail2=0
-          for i in $(seq 1 10); do
-            R=$(curl -s -m 8 -o /dev/null -w "%{http_code}" http://85.174.249.129:8081/api/instance 2>/dev/null)
-            [ "$R" = "200" ] && ok2=$((ok2+1)) || fail2=$((fail2+1))
-            printf "%s " "$R"
-          done; echo; echo "PLAIN ok=$ok2 fail=$fail2"
+          echo "--- grpc short path, h2 ---"
+          curl -sk -m 10 --http2-prior-knowledge -X POST -H "Content-Type: application/grpc" --resolve netbird.sodalab.pro:8081:85.174.249.129 -o /dev/null -w "h2:%{http_code} type:%{content_type}\n" https://netbird.sodalab.pro:8081/management.ManagementService/GetServerKey
+          echo "--- same via plain http ---"
+          curl -s -m 10 --http2-prior-knowledge -X POST -H "Content-Type: application/grpc" -o /dev/null -w "h2plain:%{http_code} type:%{content_type}\n" http://85.174.249.129:8081/management.ManagementService/GetServerKey
+          echo "--- dashboard root ---"
+          curl -sk -m 10 --resolve netbird.sodalab.pro:8081:85.174.249.129 -o /dev/null -w "ui:%{http_code} type:%{content_type}\n" https://netbird.sodalab.pro:8081/
