@@ -15,6 +15,11 @@ footer {
   font-family: "PT Serif Caption", serif;
 }
 
+:focus-visible {
+  outline: 2px solid var(--link-color);
+  outline-offset: 2px;
+}
+
 /* Content */
 
 body main {
@@ -65,7 +70,7 @@ code {
   border-style: none;
 }
 pre {
-  padding: 1rem;
+  padding: 1rem 1.5rem;
   background: none;
   border-radius: 8px;
   background-color: #77777733;
@@ -79,13 +84,85 @@ pre code {
   border-style: none;
   opacity: 1;
 }
+
+/* Code syntax */
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata,
+.token.attribute {
+  color: color-mix(in srgb, currentColor 45%, transparent);
+  font-style: italic;
+}
+
+.token.punctuation,
+.token.closure-punctuation {
+  opacity: 0.6;
+}
+
+.token.operator,
+.token.entity,
+.token.url {
+  opacity: 0.85;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword,
+.token.symbol {
+  color: var(--link-color);
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.property,
+.token.tag,
+.token.deleted,
+.token.closure-params,
+.token.fragment-specifier,
+.token.lifetime-annotation {
+  color: var(--link-visited);
+}
+
+.token.function,
+.token.class-name,
+.token.function-definition,
+.token.macro,
+.token.module-declaration,
+.token.type-definition {
+  color: inherit;
+  font-weight: 700;
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  color: var(--link-hover);
+}
+
+.token.bold {
+  font-weight: 700;
+}
+
+.token.italic {
+  font-style: italic;
+}
 blockquote {
   border-radius: 8px;
   background-color: #77777733;
   opacity: 0.9;
-  font-style: italic;
+  /* font-style: italic; */
   padding: 1rem;
   margin: 1rem 0;
+  font-family: "PT Serif", serif;
 }
 
 body a {
@@ -189,13 +266,16 @@ body .sidebar {
 
 .sidebar-actions {
   align-items: center;
-  display: flex;
+  display: none;
   gap: 0.5rem;
-  justify-content: space-between;
-  padding: 1rem 1rem 0;
+  left: 0.5rem;
+  position: fixed;
+  top: 0.5rem;
+  z-index: 30;
 }
 
 .sidebar-actions button,
+.sidebar .search .input-wrap button,
 .sidebar-toggle {
   align-items: center;
   background: transparent;
@@ -203,22 +283,32 @@ body .sidebar {
   color: inherit;
   cursor: pointer;
   display: inline-flex;
+  flex: none;
   font: inherit;
-  height: 2.5rem;
   justify-content: center;
   margin: 0;
   padding: 0;
+}
+
+.sidebar-actions button,
+.sidebar-toggle {
+  height: 2.5rem;
   width: 2.5rem;
 }
 
-.sidebar-actions button {
+.sidebar .search .input-wrap button {
+  height: 2em;
+  width: 2em;
+}
+
+.sidebar-actions button,
+.sidebar .search .input-wrap button {
   font-size: 1.25rem;
 }
 
 .sidebar-actions button:hover,
-.sidebar-actions button:focus-visible,
-.sidebar-toggle:hover,
-.sidebar-toggle:focus-visible {
+.sidebar .search .input-wrap button:hover,
+.sidebar-toggle:hover {
   opacity: 0.65;
 }
 
@@ -235,6 +325,9 @@ body .sidebar {
 }
 
 .sidebar .search .input-wrap {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
   position: relative;
 }
 
@@ -242,8 +335,11 @@ body .sidebar {
   background: color-mix(in srgb, currentColor 8%, transparent);
   border: 0;
   color: inherit;
+  flex: 1;
+  min-width: 0;
   padding-right: 2.5rem;
-  width: 100%;
+  padding-left: 1rem;
+  border-radius: 2.5rem;
 }
 
 .sidebar .search input[type="search"]:focus {
@@ -335,9 +431,13 @@ body .sidebar {
   padding-left: 0.75rem;
 }
 
-.sidebar .app-sub-sidebar .active > a {
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
+.sidebar .sidebar-nav > ul > li.active > a {
+  background: color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 8px;
+  color: var(--link-hover);
+  display: inline-block;
+  margin: -0.15rem -0.5rem;
+  padding: 0.15rem 0.5rem;
 }
 
 .sidebar > footer {
@@ -370,13 +470,12 @@ body .sidebar {
   }
 
   body .sidebar {
-    bottom: auto;
+    bottom: 1rem;
     left: 50%;
-    max-height: calc(100dvh - 2rem);
     opacity: 0;
     pointer-events: none;
-    top: 50%;
-    transform: translate(-50%, -50%) scale(0.98);
+    top: 4rem;
+    transform: translateX(-50%) scale(0.98);
     visibility: hidden;
     width: min(30rem, calc(100vw - 2rem));
   }
@@ -384,7 +483,7 @@ body .sidebar {
   body .sidebar.sidebar-open {
     opacity: 1;
     pointer-events: auto;
-    transform: translate(-50%, -50%) scale(1);
+    transform: translateX(-50%) scale(1);
     visibility: visible;
   }
 
@@ -416,6 +515,16 @@ body .sidebar {
 
   body.sidebar-is-open .sidebar-toggle {
     display: none;
+  }
+
+  .sidebar-actions {
+    display: none;
+    justify-content: space-between;
+    right: 0.5rem;
+  }
+
+  body.sidebar-is-open .sidebar-actions {
+    display: flex;
   }
 
   .sidebar-actions .sidebar-close {
@@ -466,4 +575,16 @@ dl dd {
 ::-webkit-scrollbar-track {
   background-color: transparent;
   border-radius: 8px;
+}
+
+/* Reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

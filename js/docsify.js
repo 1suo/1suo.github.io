@@ -8,6 +8,7 @@ function setupSidebar() {
   if (!sidebar) return null;
 
   const mobileViewport = window.matchMedia(MOBILE_SIDEBAR_QUERY);
+  const inputWrap = search ? search.querySelector(".input-wrap") : null;
   const actions = document.createElement("div");
   const closeButton = document.createElement("button");
   let focusBeforeSidebar;
@@ -20,8 +21,7 @@ function setupSidebar() {
   if (themeSwitcher) actions.appendChild(themeSwitcher);
   actions.appendChild(closeButton);
 
-  const searchInsideSidebar = search && search.parentElement === sidebar;
-  sidebar.insertBefore(actions, searchInsideSidebar ? search : sidebar.firstChild);
+  document.body.appendChild(actions);
 
   function setSidebarOpen(open, restoreFocus) {
     const wasOpen = sidebar.classList.contains("sidebar-open");
@@ -52,11 +52,15 @@ function setupSidebar() {
       sidebar.setAttribute("role", "dialog");
       sidebar.setAttribute("aria-modal", "true");
       sidebar.setAttribute("aria-label", "Site navigation");
+      if (themeSwitcher) actions.insertBefore(themeSwitcher, closeButton);
     } else {
       sidebar.removeAttribute("role");
       sidebar.removeAttribute("aria-modal");
       sidebar.removeAttribute("aria-label");
       setSidebarOpen(false, false);
+      if (themeSwitcher && inputWrap) {
+        inputWrap.insertBefore(themeSwitcher, inputWrap.firstChild);
+      }
     }
   }
 
@@ -89,6 +93,7 @@ function setupSidebar() {
     if (
       document.body.classList.contains("sidebar-is-open") &&
       !sidebar.contains(event.target) &&
+      !actions.contains(event.target) &&
       (!sidebarToggle || !sidebarToggle.contains(event.target)) &&
       !event.target.closest("button.hashtag")
     ) {
@@ -138,6 +143,47 @@ function setupHashtagSearch(search, setSidebarOpen, mobileViewport) {
   });
 }
 
+function renderSidebarHashtags() {
+  const nav = document.querySelector(".sidebar-nav");
+  if (!nav) return;
+
+  const test = /(^|[\s(["'“‘])#([\p{L}\p{N}_][\p{L}\p{N}_-]*)/u;
+  const pattern = /(^|[\s(["'“‘])#([\p{L}\p{N}_][\p{L}\p{N}_-]*)/gu;
+  const walker = document.createTreeWalker(nav, NodeFilter.SHOW_TEXT, {
+    acceptNode: function (node) {
+      const parent = node.parentElement;
+      if (!parent || parent.closest("a, code, button, .app-sub-sidebar")) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      return test.test(node.nodeValue)
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_REJECT;
+    },
+  });
+
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+
+  nodes.forEach(function (node) {
+    const fragment = document.createDocumentFragment();
+    let match;
+    let last = 0;
+    pattern.lastIndex = 0;
+    while ((match = pattern.exec(node.nodeValue))) {
+      fragment.append(node.nodeValue.slice(last, match.index + match[1].length));
+      const hashtag = document.createElement("button");
+      hashtag.className = "hashtag";
+      hashtag.type = "button";
+      hashtag.dataset.hashtag = "#" + match[2];
+      hashtag.textContent = "#" + match[2];
+      fragment.append(hashtag);
+      last = match.index + match[0].length;
+    }
+    fragment.append(node.nodeValue.slice(last));
+    node.replaceWith(fragment);
+  });
+}
+
 function wrapContentImages() {
   document.querySelectorAll("main img").forEach(function (img) {
     if (img.parentElement.tagName === "A") return;
@@ -177,6 +223,7 @@ window.$docsify = {
       });
 
       hook.ready(function () {
+        renderSidebarHashtags();
         const sidebarUi = setupSidebar();
         if (!sidebarUi) return;
         setupResponsiveFooter(sidebarUi.sidebar, sidebarUi.mobileViewport);

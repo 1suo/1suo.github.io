@@ -3,6 +3,37 @@
 
 Причины две.
 
+``` clojure
+(defn run [nvecs nitems nthreads niters]
+  (let [vec-refs (vec (map (comp ref vec)
+                           (partition nitems (range (* nvecs nitems)))))
+        swap #(let [v1 (rand-int nvecs)
+                    v2 (rand-int nvecs)
+                    i1 (rand-int nitems)
+                    i2 (rand-int nitems)]
+                (dosync
+                 (let [temp (nth @(vec-refs v1) i1)]
+                   (alter (vec-refs v1) assoc i1 (nth @(vec-refs v2) i2))
+                   (alter (vec-refs v2) assoc i2 temp))))
+        report #(do
+                 (prn (map deref vec-refs))
+                 (println "Distinct:"
+                          (count (distinct (apply concat (map deref vec-refs))))))]
+    (report)
+    (dorun (apply pcalls (repeat nthreads #(dotimes [_ niters] (swap)))))
+    (report)))
+
+; (run 100 10 10 100000)
+
+(defn greet [gay] (println "Yo" gay))
+(def greet (fn [gay] (println gay)))
+(def greet #(println %))
+( greet "GAY" )
+(def x (Math/sqrt 20))
+(* x x)
+
+```
+
 #### 1. Я -- инженер
 
 Мне нравится проектировать клавиатуры и раскладки. 
@@ -23,7 +54,7 @@
 
 Тем не менее, навык замечать вещи за пределами своей картины мира (и беспристрастно их оценивать) не менее полезен, чем способность ценить свое время. 
 
-> Удобство использования > удобство запоминания > привычность
+> `b` Удобство использования > удобство запоминания > привычность
 
 Поэтому в моей раскладке побывало большое количество экспериментальных фич, как собственных, так и заимствованных у других. 
 В итоге я собрал в ней субъективно лучшее из всего, что мне известно, адаптировав под свой вкус, и добавил ряд собственных решений.
