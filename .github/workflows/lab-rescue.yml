@@ -1,0 +1,15 @@
+name: lab-rescue
+on:
+  workflow_dispatch:
+jobs:
+  rescue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          echo "--- grpc short path, h2 ---"
+          curl -sk -m 10 --http2-prior-knowledge -X POST -H "Content-Type: application/grpc" --resolve netbird.sodalab.pro:8081:85.174.249.129 -o /dev/null -w "h2:%{http_code} type:%{content_type}\n" https://netbird.sodalab.pro:8081/management.ManagementService/GetServerKey
+          echo "--- same via plain http ---"
+          curl -s -m 10 --http2-prior-knowledge -X POST -H "Content-Type: application/grpc" -o /dev/null -w "h2plain:%{http_code} type:%{content_type}\n" http://85.174.249.129:8081/management.ManagementService/GetServerKey
+          echo "--- dashboard root ---"
+          curl -sk -m 10 --resolve netbird.sodalab.pro:8081:85.174.249.129 -o /dev/null -w "ui:%{http_code} type:%{content_type}\n" https://netbird.sodalab.pro:8081/

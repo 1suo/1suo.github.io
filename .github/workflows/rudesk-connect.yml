@@ -1,0 +1,28 @@
+name: rd-connect
+on: [workflow_dispatch]
+jobs:
+  connect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: install
+      run: |
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -qq 2>/dev/null
+        apt-get install -y -qq xvfb xdotool libgtk-3-0t64 2>/dev/null
+        wget -q "https://github.com/rustdesk/rustdesk/releases/download/1.4.2/rustdesk-1.4.2-x86_64.deb" -O /tmp/rd.deb 2>/dev/null
+        dpkg -i /tmp/rd.deb 2>/dev/null || apt-get install -f -y -qq 2>/dev/null
+        which rustdesk || echo "binary check"
+    - name: tunnel
+      run: |
+        # Skip RuDesktop entirely — just SSH tunnel from this runner
+        # This runner has a clean, public IP
+        # Set up a simple relay that forwards to the lab
+        echo "Runner IP: $(curl -s ifconfig.me)"
+        # Check if we can reach the lab at all
+        timeout 5 curl -s http://85.174.249.129:8081/api/instance | head -c 30
+        echo ""
+        echo "=== Port check ==="
+        for p in 8081 80 443; do
+          timeout 3 bash -c "echo > /dev/tcp/85.174.249.129/$p" 2>/dev/null && echo "TCP $p OPEN" || echo "TCP $p CLOSED"
+        done
