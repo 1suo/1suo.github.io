@@ -8,7 +8,7 @@
       hover: "yellow",
       visited: "darkkhaki",
       icon: "🌞",
-      label: "Use light theme",
+      label: "light",
     },
     light: {
       background: "gainsboro",
@@ -17,7 +17,7 @@
       hover: "dodgerblue",
       visited: "darkorchid",
       icon: "🌚",
-      label: "Use dark theme",
+      label: "dark",
     },
   };
   const savedTheme = localStorage.getItem("theme");

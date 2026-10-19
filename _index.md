@@ -1,19 +1,12 @@
+
 # 1 S U O
 
-***
+### Engineering
 
-Эргономик кейбордс и синтетик лайф
+[Perigram](https://perigram.sodalab.pro)
+Buisness process automation platform that I am currently developing full-time. 
 
-#keyboard 
+[Edenica](https://edenica.app)
+Procedural digital plants and open-ended decentralized evolution.
 
----
 
-- граффити и мемы в [инсте](https://instagram.com/1suo) ↗
-- [телега](https://t.me/i1991) ↗ для связи
-- [канал](https://t.me/keysurfer) ↗ про клавиатуры
-- [гитхаб](https://github.com/1suo) ↗
-- [икс.ком](https://x.com/_1suo) ↗
-
-***
-
-[Шаблон этого сайта](https://github.com/1suo/simple-site)

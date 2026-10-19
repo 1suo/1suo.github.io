@@ -42,13 +42,19 @@ body .content {
 h1,
 h2,
 h3,
-h4,
-h5,
-h6 {
+h4 {
   color: inherit;
   font-family: "PT Serif", serif;
   margin-bottom: 1rem;
 }
+
+h5,
+h6 {
+  color: inherit;
+  font-family: "PT Sans", serif;
+  margin-bottom: 1rem;
+}
+
 code {
   border-radius: 4px;
   font-size: 1rem;
@@ -162,7 +168,8 @@ button.hashtag {
 body .sidebar {
   background: var(--sidebar-background);
   color: var(--body-color);
-  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  /* border: 1px solid color-mix(in srgb, currentColor 20%, transparent); */
+  border: none;
   border-radius: 8px;
   bottom: 1rem;
   box-sizing: border-box;
