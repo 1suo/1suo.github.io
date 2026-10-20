@@ -202,6 +202,98 @@ function wrapContentImages() {
   });
 }
 
+// Docsify (v4 and v5) builds the page outline in Compiler#subSidebar with
+// genTree(), whose parent lookup goes stale: when a shallower heading follows
+// deeper ones (## ... # ... ###), the deep headings keep nesting under the
+// previous same-level-minus-one parent, so they render above their real
+// parent and the outline order breaks. Rebuild the tree with a
+// nearest-shallower-parent stack, and drop a leading page-title heading of
+// any level (upstream only drops h1, so pages titled with h2 leak the title
+// into their own outline).
+function buildSubSidebarTree(toc, maxLevel) {
+  const tree = [];
+  const stack = [];
+
+  toc.forEach(function (heading) {
+    if (heading.level > maxLevel) return;
+
+    const node = {
+      level: heading.level,
+      title: heading.title,
+      slug: heading.slug,
+      children: [],
+    };
+
+    while (stack.length && stack[stack.length - 1].level >= node.level) {
+      stack.pop();
+    }
+
+    if (stack.length) stack[stack.length - 1].children.push(node);
+    else tree.push(node);
+
+    stack.push(node);
+  });
+
+  return tree;
+}
+
+function renderSubSidebarTree(nodes) {
+  if (!nodes.length) return "";
+
+  return (
+    '<ul class="app-sub-sidebar">' +
+    nodes
+      .map(function (node) {
+        const title = node.title.replace(/(<([^>]+)>)/g, "");
+        return (
+          '<li><a class="section-link" href="' +
+          node.slug +
+          '" title="' +
+          title +
+          '">' +
+          node.title +
+          "</a></li>" +
+          (node.children.length ? renderSubSidebarTree(node.children) : "")
+        );
+      })
+      .join("") +
+    "</ul>"
+  );
+}
+
+function fixSubSidebarOutline(compiler) {
+  compiler.subSidebar = function (level) {
+    if (!level) {
+      this.toc = [];
+      return;
+    }
+
+    const currentPath = this.router.getCurrentPath();
+    if (!this.cacheTree[currentPath]) {
+      const toc = this.toc;
+      if (toc[0] && toc[0].ignoreAllSubs) toc.splice(0);
+      if (
+        toc[0] &&
+        toc.every(function (heading) {
+          return heading.level >= toc[0].level;
+        })
+      ) {
+        toc.shift();
+      }
+      for (let i = 0; i < toc.length; i++) {
+        if (toc[i].ignoreSubHeading) {
+          toc.splice(i, 1);
+          i--;
+        }
+      }
+      this.cacheTree[currentPath] = buildSubSidebarTree(toc, level);
+    }
+
+    this.toc = [];
+    return renderSubSidebarTree(this.cacheTree[currentPath]);
+  };
+}
+
 window.$docsify = {
   alias: { "/.*/_sidebar.md": "/_sidebar.md" },
   auto2top: true,
@@ -216,7 +308,11 @@ window.$docsify = {
     noData: "No results",
   },
   plugins: [
-    function (hook) {
+    function (hook, vm) {
+      hook.mounted(function () {
+        fixSubSidebarOutline(vm.compiler);
+      });
+
       hook.beforeEach(function (markdown) {
         const route = window.location.hash.split("?")[0] || "#/";
         return window.MarkdownExtensions.transform(markdown, { route: route });
