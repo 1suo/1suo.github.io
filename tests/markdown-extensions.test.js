@@ -55,3 +55,20 @@ test("renders subscript and superscript without consuming strikethrough", functi
     "H<sub>2</sub>O, X<sup>2</sup>, and ~~deleted~~"
   );
 });
+
+test("does not swallow heading lines into footnotes or definition lists", function () {
+  const markdown = [
+    "Text[^note].",
+    "",
+    "[^note]: A footnote.",
+    "  #### Nested heading",
+    "",
+    "##",
+    ": definition",
+  ].join("\n");
+  const result = transform(markdown);
+
+  assert.match(result, /^ {2}#### Nested heading$/m);
+  assert.match(result, /<li id="footnote-note">/);
+  assert.doesNotMatch(result, /<dt>##<\/dt>/);
+});

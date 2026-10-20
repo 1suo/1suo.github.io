@@ -269,7 +269,8 @@ function fixSubSidebarOutline(compiler) {
     }
 
     const currentPath = this.router.getCurrentPath();
-    if (!this.cacheTree[currentPath]) {
+    const cachedTree = this.cacheTree[currentPath];
+    if (!cachedTree || (!cachedTree.length && this.toc.length)) {
       const toc = this.toc;
       if (toc[0] && toc[0].ignoreAllSubs) toc.splice(0);
       if (

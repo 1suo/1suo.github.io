@@ -109,7 +109,7 @@
     const term = lines[index].trim();
     return (
       term !== "" &&
-      !/^(?:#{1,6}|[-+*>]|\d+[.)])\s/.test(term) &&
+      !/^(?:#{1,6}|[-+*>]|\d+[.)])(?:\s|$)/.test(term) &&
       /^ {0,3}:\s+\S/.test(lines[index + 1])
     );
   }
@@ -127,7 +127,11 @@
       }
 
       const content = [match[2]];
-      while (i + 1 < lines.length && /^(?: {2,}|\t)\S/.test(lines[i + 1])) {
+      while (
+        i + 1 < lines.length &&
+        /^(?: {2,}|\t)\S/.test(lines[i + 1]) &&
+        !/^ {0,3}#{1,6}\s/.test(lines[i + 1])
+      ) {
         content.push(lines[++i].trim());
       }
       definitions.set(match[1], content.join(" "));
