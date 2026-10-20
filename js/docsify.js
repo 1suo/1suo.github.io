@@ -302,7 +302,7 @@ window.$docsify = {
   hideSidebar: false,
   homepage: "_index.md",
   maxLevel: 0,
-  subMaxLevel: 3,
+  subMaxLevel: 5,
   search: {
     paths: "auto",
     placeholder: "Search",
