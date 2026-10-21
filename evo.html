@@ -49,7 +49,7 @@
   <div id="overlay"></div>
   <div id="infoPopup">
     <p>Evolution-based SVG generator: you are the selection pressure. The genome is a typed combinator graph — numbers, colors, drawables. The only primitive is a literal path (points + per-segment curvature genes); circles, stars and arcs are just point configurations the sampler writes into it, so every outline is vertex-evolvable. Numbers build fields (x, y, i, noise, sin…), colors blend, and combinators compose: repetition with five placement modes, field warps, planting along outlines, clipping, kaleidoscopes, merged multi-subpath fills with even-odd holes, gradients, blend modes.</p>
-    <p>Expression runs deep: structural params can themselves be genes driven by fields (paramIns); <b>variant</b> re-runs a subtree with seeded divergence (gene duplication); <b>recur/self</b> lets a body invoke itself; some lineages carry <b>dev</b> rewrite rules — a growth program that expands the graph before drawing (an L-system layer).</p>
+    <p>Expression runs deep: structural params can themselves be genes driven by fields (paramIns); <b>variant</b> re-runs a subtree with seeded divergence (gene duplication); <b>recur/self</b> lets a body invoke itself; some lineages carry <b>dev</b> rewrite rules — a growth program that expands the graph before drawing (an L-system layer). Repeats and plantings carry a <b>drift</b> gene: every copy keeps the shared structure and promoted expressions, but its literal genes draw a seeded per-copy variation — clones (drift 0) and divergent swarms (drift 1) are both one mutation apart, and any single gene freezes by being promoted to an expression.</p>
     <p>Click the parent cell to reroll its children. Click a child to make it the new parent. "Random Parent" starts a new lineage, "Undo" steps back one selection.</p>
     <button id="closePopup">Close</button>
   </div>
@@ -72,13 +72,14 @@
 //          fill-rule; colors/width re-evaluated per shape at its centroid
 //   xform   translate/rotate/scale, pivot = canvas centre or own centre
 //   repeat  placement ring | line | grid | phyllotaxis | spiral, per-instance
-//          spin/grow/mirror, divergence-angle/winding/spacing/grow-cap genes
+//          spin/grow/mirror, divergence-angle/winding/spacing/grow-cap genes,
+//          drift = per-copy seeded divergence of the body's literal genes
 //   smooth  Chaikin corner-cutting (per subpath)
 //   over    a over b (separate elements, painter order)
 //   merge   JOIN: pack outlines into ONE path element as subpaths — with
 //          fill-rule evenodd that is holes / xor in one shape
 //   warp    displace outline points by an N-field (radial / direction / swirl)
-//   along   plant copies of A at points along B's outline (phase gene)
+//   along   plant copies of A at points along B's outline (phase + drift genes)
 //   within  clip/mask A to B (invert = outside)
 //   kaleido dihedral or cyclic fold into k sectors
 //   variant L3: n passes of the body, seeded param drift between passes
@@ -104,6 +105,9 @@
 //
 // Genome: { ver:2, seed, palette:[[h,s,l,a]...], bg, bg2, bgGrad, bgA,
 //           nodes:[{op, params, paramIns?, in:[ids]}], root, dev? }
+// Structural mutations: twin (neutral growth), wrap (splice a combinator in),
+// over-add (a fresh shape joins the composition as a new layer, warm-only),
+// shape-loss (disconnect one wired path + prune), dead-prune, re-root.
 // nodes[i].in and paramIns reference only earlier ids (acyclic by
 // construction). Unreachable nodes are neutral genes.
 // =====================================================================
@@ -173,7 +177,7 @@ const OPS = {
               if (p.grad > 0) p.fillOn = 1;
             } },
   xform:  { out: 'D', arity: ['D', 'N', 'N', 'N', 'N'], params: { pivot: [0, 1] }, dist: (p, rng) => { p.pivot = rng() < 0.35 ? 1 : 0; } },
-  repeat: { out: 'D', arity: ['D'], params: { n: [1, 24], mode: [0, 4], radius: [0, 0.45], spread: [0, 1], rot0: [0, 1], mirror: [0, 1], spin: [-1, 1], grow: [0, 1], pivot: [0, 1], ga: [0.2, 0.8], wind: [1, 8], gap: [0.5, 2], gcap: [0, 2] },
+  repeat: { out: 'D', arity: ['D'], params: { n: [1, 24], mode: [0, 4], radius: [0, 0.45], spread: [0, 1], rot0: [0, 1], mirror: [0, 1], spin: [-1, 1], grow: [0, 1], pivot: [0, 1], ga: [0.2, 0.8], wind: [1, 8], gap: [0.5, 2], gcap: [0, 2], drift: [0, 1] },
             dist: (p, rng) => {
               p.n = randInt(2, 9, rng);
               p.mode = choice([0, 0, 0, 1, 2, 2, 3, 4], rng);
@@ -181,13 +185,14 @@ const OPS = {
               p.pivot = p.mode >= 2 ? 1 : (rng() < 0.4 ? 1 : 0);
               p.ga = rand(0.3, 0.45, rng); p.wind = rand(1, 6, rng);
               p.gap = rand(0.7, 1.6, rng); p.gcap = rand(0.3, 1.5, rng);
+              p.drift = rng() < 0.25 ? rand(0.05, 0.6, rng) : 0; // copies diverge, but clones stay the default
             } },
   over:   { out: 'D', arity: ['D', 'D'] },
   merge:  { out: 'D', arity: ['D', 'D'] }, // join: pack outlines into ONE path element as subpaths; with rule=evenodd → holes / xor
   warp:   { out: 'D', arity: ['D', 'N'], params: { amp: [0, 0.2], dir: [0, 1], mode: [0, 2] },
             dist: (p, rng) => { p.amp = rand(0.01, 0.12, rng); p.mode = rng() < 0.5 ? 0 : (rng() < 0.5 ? 1 : 2); } },
-  along:  { out: 'D', arity: ['D', 'D'], params: { n: [2, 24], align: [0, 1], scale: [0.02, 0.4], show: [0, 1], phase: [0, 1] },
-            dist: (p, rng) => { p.n = randInt(3, 14, rng); p.align = rng() < 0.7 ? 1 : 0; p.scale = rand(0.04, 0.25, rng); p.show = rng() < 0.4 ? 1 : 0; p.phase = rand(0, 1, rng); } },
+  along:  { out: 'D', arity: ['D', 'D'], params: { n: [2, 24], align: [0, 1], scale: [0.02, 0.4], show: [0, 1], phase: [0, 1], drift: [0, 1] },
+            dist: (p, rng) => { p.n = randInt(3, 14, rng); p.align = rng() < 0.7 ? 1 : 0; p.scale = rand(0.04, 0.25, rng); p.show = rng() < 0.4 ? 1 : 0; p.phase = rand(0, 1, rng); p.drift = rng() < 0.25 ? rand(0.05, 0.5, rng) : 0; } },
   within: { out: 'D', arity: ['D', 'D'], params: { invert: [0, 1] } },
   kaleido:{ out: 'D', arity: ['D'], params: { sectors: [3, 12], rot0: [0, 1], refl: [0, 1] },
             dist: (p, rng) => { p.sectors = randInt(3, 9, rng); p.refl = rng() < 0.6 ? 1 : 0; } },
@@ -240,10 +245,10 @@ function samplePalette() {
 // Field sources (x/y/i/depth/r/theta/noise) carry extra weight: without a
 // bias, consts outnumber them and mutation pressure erodes expression wiring.
 const FIELD_SOURCES = new Set(['x', 'y', 'i', 'depth', 'r', 'theta', 'noise']);
-function wireInput(nodes, id, type) {
+function wireInput(nodes, id, type, exclude = -1) {
   const cands = [], ws = [];
   for (let j = 0; j < id; j++) {
-    if (OPS[nodes[j].op].out !== type) continue;
+    if (j === exclude || !OPS[nodes[j].op] || OPS[nodes[j].op].out !== type) continue;
     cands.push(j);
     ws.push(FIELD_SOURCES.has(nodes[j].op) ? 2.5 : 1);
   }
@@ -277,32 +282,34 @@ function samplePath(g, kind) {
   if (kind === 'circle' || kind === 'ellipse') {
     const n = randInt(8, 12), rx = rand(0.05, 0.22), ry = kind === 'circle' ? rx : rand(0.05, 0.22);
     const bl = -Math.tan(Math.PI / n) / 2;
-    params = { pts: [], bulge: [], skew: [], closed: 1, bulgeSrc: 0 };
-    for (let k = 0; k < n; k++) { const a = k / n * TAU; params.pts.push([Math.cos(a) * rx, Math.sin(a) * ry]); params.bulge.push(bl); params.skew.push(0.5); }
+    params = { pts: [], bulge: [], skew: [], round: [], closed: 1, bulgeSrc: 0 };
+    for (let k = 0; k < n; k++) { const a = k / n * TAU; params.pts.push([Math.cos(a) * rx, Math.sin(a) * ry]); params.bulge.push(bl); params.skew.push(0.5); params.round.push(0); }
   } else if (kind === 'ngon') {
     const n = randInt(3, 9), r = rand(0.06, 0.25);
-    params = { pts: [], bulge: [], skew: [], closed: 1, bulgeSrc: 0 };
-    for (let k = 0; k < n; k++) { const a = k / n * TAU; params.pts.push([Math.cos(a) * r, Math.sin(a) * r]); params.bulge.push(rand(-0.08, 0.08)); params.skew.push(0.5); }
+    const rd = Math.random() < 0.35 ? rand(0.1, 0.45) : 0; // rounded polygon / squircle family
+    params = { pts: [], bulge: [], skew: [], round: [], closed: 1, bulgeSrc: 0 };
+    for (let k = 0; k < n; k++) { const a = k / n * TAU; params.pts.push([Math.cos(a) * r, Math.sin(a) * r]); params.bulge.push(rand(-0.08, 0.08)); params.skew.push(0.5); params.round.push(rd); }
   } else if (kind === 'star') {
     const n = randInt(5, 10), r1 = rand(0.08, 0.25), r2 = rand(0.02, r1 * 0.7);
-    params = { pts: [], bulge: [], skew: [], closed: 1, bulgeSrc: 0 };
-    for (let k = 0; k < 2 * n; k++) { const a = k / (2 * n) * TAU - Math.PI / 2, rr = k % 2 ? r2 : r1; params.pts.push([Math.cos(a) * rr, Math.sin(a) * rr]); params.bulge.push(rand(-0.06, 0.06)); params.skew.push(0.5); }
+    params = { pts: [], bulge: [], skew: [], round: [], closed: 1, bulgeSrc: 0 };
+    for (let k = 0; k < 2 * n; k++) { const a = k / (2 * n) * TAU - Math.PI / 2, rr = k % 2 ? r2 : r1; params.pts.push([Math.cos(a) * rr, Math.sin(a) * rr]); params.bulge.push(rand(-0.06, 0.06)); params.skew.push(0.5); params.round.push(0); }
   } else if (kind === 'arc') { // annular sector as literal points; pie slice when r2≈0
     const r = rand(0.08, 0.24), r2 = r * (Math.random() < 0.3 ? 0 : rand(0.2, 0.85));
     const a0 = rand(0, 1), a1 = a0 + rand(0.15, 0.7);
     const SEG = Math.max(2, Math.ceil((a1 - a0) * 4)), da = (a1 - a0) / SEG;
     const bl = Math.tan(da * Math.PI) / 2;
-    params = { pts: [], bulge: [], skew: [], closed: 1, bulgeSrc: 0 };
-    for (let k = 0; k < SEG; k++) { const a = (a0 + k * da) * TAU; params.pts.push([Math.cos(a) * r, Math.sin(a) * r]); params.bulge.push(-bl); params.skew.push(0.5); }
+    params = { pts: [], bulge: [], skew: [], round: [], closed: 1, bulgeSrc: 0 };
+    for (let k = 0; k < SEG; k++) { const a = (a0 + k * da) * TAU; params.pts.push([Math.cos(a) * r, Math.sin(a) * r]); params.bulge.push(-bl); params.skew.push(0.5); params.round.push(0); }
     if (r2 > 0.005) {
-      for (let k = SEG - 1; k >= 0; k--) { const a = (a0 + k * da) * TAU; params.pts.push([Math.cos(a) * r2, Math.sin(a) * r2]); params.bulge.push(bl); params.skew.push(0.5); }
+      for (let k = SEG - 1; k >= 0; k--) { const a = (a0 + k * da) * TAU; params.pts.push([Math.cos(a) * r2, Math.sin(a) * r2]); params.bulge.push(bl); params.skew.push(0.5); params.round.push(0); }
       params.bulge[SEG - 1] = 0; params.bulge[2 * SEG - 1] = 0; // radial connectors stay straight
     } else {
       params.pts.push([0, 0]); params.bulge[SEG - 1] = 0; params.bulge.push(0); // straight edges to the hub
+      params.round.push(0);
     }
   } else if (kind === 'line') {
     const len = rand(0.05, 0.3), ang = rand(0, 1);
-    params = { pts: [[0, 0], [Math.cos(ang * TAU) * len, Math.sin(ang * TAU) * len]], bulge: [0, 0], skew: [0.5, 0.5], closed: 0, bulgeSrc: 0 };
+    params = { pts: [[0, 0], [Math.cos(ang * TAU) * len, Math.sin(ang * TAU) * len]], bulge: [0, 0], skew: [0.5, 0.5], round: [0, 0], closed: 0, bulgeSrc: 0 };
   }
   return pushNode(g, 'poly', params ? { params, in: [cx, cy] } : { in: [cx, cy] }); // no params → generic blob via dist
 }
@@ -329,7 +336,7 @@ function sampleNumExpr(g) {
 // L1: sprinkle param promotions — structure becomes an expression of the fields
 function promoteSome(g) {
   g.nodes.forEach((n, id) => {
-    if (Math.random() > 0.12 || !OPS[n.op].params) return;
+    if (Math.random() > 0.12 || !OPS[n.op] || !OPS[n.op].params) return;
     const cands = Object.keys(OPS[n.op].params)
       .filter((k) => typeof n.params[k] === 'number' && !(n.paramIns && n.paramIns[k] != null));
     if (!cands.length) return;
@@ -452,12 +459,14 @@ function mutateNode(node, at, g, t) {
   if (node.op === 'poly') {
     const pts = node.params.pts, bulge = node.params.bulge;
     const skew = node.params.skew || (node.params.skew = pts.map(() => 0.5)); // ctrl-point slide along each chord
+    const round = node.params.round || (node.params.round = pts.map(() => 0)); // corner lever: 0 = sharp
     acts.push([1.2, () => { // vertex topology: grow / remove; insert noise scales with local edge length
       if (pts.length > 3 && (pts.length >= 12 || Math.random() < 0.4)) {
         const i = randInt(0, pts.length - 1);
         pts.splice(i, 1);
         bulge.splice(i, 1);
         skew.splice(i, 1);
+        round.splice(i, 1);
       } else {
         const i = randInt(0, pts.length - 1);
         const a = pts[i], b = pts[(i + 1) % pts.length];
@@ -466,6 +475,7 @@ function mutateNode(node, at, g, t) {
         pts.splice(i + 1, 0, [(a[0] + b[0]) / 2 + j(), (a[1] + b[1]) / 2 + j()]);
         bulge.splice(i + 1, 0, rand(-0.6, 0.6));
         skew.splice(i + 1, 0, rand(0.35, 0.65));
+        round.splice(i + 1, 0, Math.random() < 0.35 ? rand(0.05, 0.45) : 0);
       }
     }]);
     acts.push([1.1, () => { // coherent affine move: the whole silhouette scales / rotates / translates
@@ -482,12 +492,13 @@ function mutateNode(node, at, g, t) {
         pts.forEach((p) => { p[0] += dx; p[1] += dy; });
       }
     }]);
-    acts.push([1.3, () => { // single vertex + its curvature genes: local bumps without whole-shape blur
+    acts.push([1.3, () => { // single vertex + its curvature/corner genes: local bumps without whole-shape blur
       const i = randInt(0, pts.length - 1);
       pts[i][0] = walk1(pts[i][0], 0.35, -0.3, 0.3, t);
       pts[i][1] = walk1(pts[i][1], 0.35, -0.3, 0.3, t);
       if (bulge[i] !== undefined) bulge[i] = walk1(bulge[i], 0.45, -1, 1, t);
       if (skew[i] !== undefined) skew[i] = walk1(skew[i], 0.3, 0.15, 0.85, t);
+      if (round[i] !== undefined) round[i] = walk1(round[i], 0.35, 0, 0.45, t);
     }]);
   }
   if (def.params) {
@@ -525,7 +536,7 @@ function mutateNode(node, at, g, t) {
     acts.push([0.15 * (0.25 + 0.75 * t), () => { // op swap: structural move, fades when cold
       const pool = def.out === 'N' ? NUM_OPS : def.out === 'C' ? COLOR_OPS : DRAWABLE_OPS.filter((o) => o !== 'self');
       const candidates = pool.filter((op) => op !== node.op && OPS[op].arity.every((type) =>
-        g.nodes.some((other, j) => j < at && OPS[other.op].out === type)));
+        g.nodes.some((other, j) => j < at && OPS[other.op] && OPS[other.op].out === type)));
       if (!candidates.length) return;
       const op = choice(candidates);
       const fresh = { op, params: sampleParams(op), in: [] };
@@ -544,6 +555,17 @@ const remapRefs = (n, fn) => {
   n.in = n.in.map(fn);
   if (n.paramIns) for (const k in n.paramIns) n.paramIns[k] = fn(n.paramIns[k]);
 };
+// drop every node unreachable from root; remap surviving refs (never -1)
+function pruneDead(g) {
+  const used = new Set([g.root]);
+  g.nodes.forEach((n) => { n.in.forEach((id) => used.add(id)); if (n.paramIns) Object.values(n.paramIns).forEach((id) => used.add(id)); });
+  if (!g.nodes.some((_, i) => !used.has(i))) return;
+  let next = 0;
+  const o2n = g.nodes.map((n, i) => (used.has(i) ? next++ : -1));
+  g.nodes = g.nodes.filter((_, i) => used.has(i))
+    .map((n) => { const c = { ...n }; remapRefs(c, (r) => (r === -1 ? -1 : (o2n[r] !== -1 ? o2n[r] : 0))); return c; });
+  g.root = o2n[g.root];
+}
 function mutate(g0, t) {
   const g = deep(g0);
   g.palette = g.palette.map((c) => mutateColor(c, t));
@@ -588,7 +610,7 @@ function mutate(g0, t) {
   // points to an earlier node — appending at the end would rewire earlier
   // consumers forward and break the acyclic-by-construction invariant
   if (Math.random() < 0.22 * t && g.nodes.length < NODE_CAP - 4) {
-    const dIds = g.nodes.map((n, i) => OPS[n.op].out === 'D' ? i : -1).filter((i) => i >= 0);
+    const dIds = g.nodes.map((n, i) => OPS[n.op] && OPS[n.op].out === 'D' ? i : -1).filter((i) => i >= 0);
     if (dIds.length) {
       const tgt = choice(dIds), wrapOp = choice(DEV_WRAPS);
       const wnode = { op: wrapOp, params: sampleParams(wrapOp), in: [] };
@@ -607,22 +629,47 @@ function mutate(g0, t) {
       g.root = remap(g.root);
     }
   }
-  // structural: prune ALL dead nodes at once (phenotype-neutral by definition,
-  // so genome bloat from twin creation self-cleans), then re-root
-  if (Math.random() < 0.15 * t) {
-    const used = new Set([g.root]);
-    g.nodes.forEach((n) => { n.in.forEach((id) => used.add(id)); if (n.paramIns) Object.values(n.paramIns).forEach((id) => used.add(id)); });
-    if (g.nodes.some((_, i) => !used.has(i))) {
-      let next = 0;
-      const o2n = g.nodes.map((n, i) => (used.has(i) ? next++ : -1));
-      g.nodes = g.nodes.filter((_, i) => used.has(i))
-        .map((n) => { const c = { ...n }; remapRefs(c, (r) => (r === -1 ? -1 : (o2n[r] !== -1 ? o2n[r] : 0))); return c; });
-      g.root = o2n[g.root];
+  // structural: grow the composition — a fresh preset shape joins as a new
+  // layer over the root. Connected immediately (unlike neutral twins, which
+  // mostly die unwired), so composition cardinality is evolvable. Warm-only
+  // (t²): adding a whole element is too big a jump for a cold child. Kept to
+  // 8 nodes so typical (~30-node) genomes stay under the growth cap.
+  if (Math.random() < 0.2 * t * t && g.nodes.length < NODE_CAP) {
+    const prim = samplePath(g, choice(PATH_KINDS)); // literal shape + anchor consts
+    const palA = pushNode(g, 'pal'), palB = pushNode(g, 'pal');
+    const w = seedConst(g, 1.5, 10);
+    const layer = pushNode(g, 'style', { in: [prim, palA, palB, w] });
+    g.root = pushNode(g, 'over', { in: [layer, g.root] }); // newcomer painted on top
+  }
+  // structural: lose a shape — one wired path is disconnected (all its
+  // consumers rewire to other earlier drawables) and the orphans are pruned.
+  // Never takes the last shape; partially-stuck slots just stay wired.
+  if (Math.random() < 0.12 * t * t) {
+    const reach = new Set(reachable(g, g.root));
+    const cands = [];
+    g.nodes.forEach((n, i) => {
+      if (n.op !== 'poly' || !reach.has(i)) return;
+      if (g.nodes.some((m, j) => j !== i && m.in.includes(i))) cands.push(i);
+    });
+    if (cands.length > 1) {
+      const x = choice(cands);
+      g.nodes.forEach((m, j) => {
+        if (j === x) return;
+        for (let k = 0; k < m.in.length; k++) {
+          if (m.in[k] !== x) continue;
+          const w = wireInput(g.nodes, j, 'D', x);
+          if (w >= 0) m.in[k] = w;
+        }
+      });
+      pruneDead(g);
     }
   }
+  // structural: prune ALL dead nodes (phenotype-neutral by definition, so
+  // genome bloat from twin creation self-cleans), then re-root
+  if (Math.random() < 0.15 * t) pruneDead(g);
   if (Math.random() < 0.15 * t) {
     // any drawable can be the root except `self` — it is null outside a recur closure
-    const cands = g.nodes.map((n, i) => OPS[n.op].out === 'D' && n.op !== 'self' ? i : -1).filter((i) => i >= 0);
+    const cands = g.nodes.map((n, i) => OPS[n.op] && OPS[n.op].out === 'D' && n.op !== 'self' ? i : -1).filter((i) => i >= 0);
     if (cands.length) g.root = choice(cands);
   }
   // L4: the growth program itself only evolves in warm children — a p/gens
@@ -655,7 +702,7 @@ function expandGenome(g) {
       for (let id = 0; id < nodes.length; id++) {
         if (nodes.length > 48) break;
         const nd = nodes[id];
-        if (!nd || OPS[nd.op].out !== 'D') continue;
+        if (!nd || !OPS[nd.op] || OPS[nd.op].out !== 'D') continue;
         if (rule.match !== '*' && nd.op !== rule.match) continue;
         if (rng() > clamp(rule.p, 0, 1)) continue;
         // splice wrapper in directly after its target — preserves the
@@ -692,6 +739,41 @@ function reachable(g, id) {
   }
   return [...seen];
 }
+// Per-copy divergence channel (the ctx.o override map variant opened, made a
+// property of every placement that stamps copies). Literal genes of the DRAWN
+// subgraph (in-edges from the body) draw a seeded jitter per copy, keyed by
+// (genome.seed, owner, copy) — deterministic, so a genome still renders 1:1.
+// paramIns sources are reached only by expressions, never in-drawn: they are
+// the shared regulatory genome, so promoting a gene to a dedicated const
+// freezes it while its neighbours keep diverging. Every draw stays centred on
+// the shared literal, so copies remain variations on one theme. Nested
+// placements shadow: the nearest owner's draw wins, per gene.
+function driftOverrides(g, bodyId, owner, k, drift, base) {
+  if (drift <= 0.02) return base;
+  const rng = mulberry32(((g.seed || 1) * 2654435761 ^ (owner * 40503) ^ (k * 2246822519)) >>> 0);
+  const o = base ? new Map(base) : new Map();
+  const seen = new Set(), st = [bodyId];
+  while (st.length) {
+    const c = st.pop();
+    if (c == null || c < 0 || seen.has(c)) continue;
+    seen.add(c);
+    const nd = g.nodes[c];
+    if (!nd) continue;
+    st.push(...nd.in); // in-edges only: paramIns sources are germline, not drawing
+  }
+  for (const rid of seen) {
+    const nd = g.nodes[rid];
+    if (!nd || !nd.params || !OPS[nd.op]) continue;
+    const ov = {}; let any = false;
+    for (const key in nd.params) {
+      if (typeof nd.params[key] !== 'number') continue;
+      if (nd.paramIns && nd.paramIns[key] != null) continue; // expressions are structure
+      ov[key] = jitterParam(nd.op, key, nd.params[key], drift, rng); any = true;
+    }
+    if (any) o.set(rid, o.has(rid) ? { ...o.get(rid), ...ov } : ov);
+  }
+  return o;
+}
 
 // ---------------------------------------------------------------- interpreter
 // evalNode is pure: genome in, draw entries out. ctx = {x, y, i, vi, depth}
@@ -701,13 +783,19 @@ function reachable(g, id) {
 // A shape is a LIST of subpaths (subs) — merge packs outlines into one entry,
 // emitted as one <path> with repeated M…Z subpaths (evenodd → holes/xor).
 // Points may carry .q — quadratic control point (emitted as real Q cmds).
-const MAX_SHAPES = 1200;
-const MAX_PAINTED = 3500;
+const MAX_SHAPES = 1200; // poly-eval valve (ctx.f.left)
+const MAX_PAINTED = 240000; // paint-cost valve: entries + points (memory-bound)
 
 const budget = (ctx) => { if (ctx.f) { if (ctx.f.left <= 0) return false; ctx.f.left--; } return true; };
-function countShapes(entries) {
+// paint cost = entries + their points. Points are what memory (and the DOM)
+// pay for: an entry-count-only budget let smooth×kaleido×repeat stacks reach
+// a few thousand DENSE entries — millions of point arrays, an OOM'd renderer.
+function paintCost(entries) {
   let n = 0;
-  for (const e of entries) n += e.kind === 'g' ? countShapes(e.kids) : 1;
+  for (const e of entries) {
+    if (e.kind === 'g') n += paintCost(e.kids);
+    else { n++; for (const sub of e.subs) n += sub.length; }
+  }
   return n;
 }
 function eachShape(entries, fn) {
@@ -751,7 +839,7 @@ function bboxOf(subs) {
 }
 const tooMany = (ctx, entries) => {
   if (!ctx.f) return false;
-  ctx.f.painted = (ctx.f.painted || 0) + countShapes(entries);
+  ctx.f.painted = (ctx.f.painted || 0) + paintCost(entries);
   return ctx.f.painted > MAX_PAINTED;
 };
 const shOut = (subs, closed) => ({
@@ -783,7 +871,7 @@ function evalNode(g, id, ctx) {
   const col = (k) => { const r = evalNode(g, node.in[k], ctx); return r && r.t === 'C' ? r.c : null; };
 
   // ---------------- numbers
-  if (op === 'const') return { t: 'N', v: p.v };
+  if (op === 'const') return { t: 'N', v: P('v', p.v) }; // via P: per-copy drift overrides and promotions must reach the workhorse node
   if (op === 'x') return { t: 'N', v: ctx.x };
   if (op === 'y') return { t: 'N', v: ctx.y };
   if (op === 'i') return { t: 'N', v: ctx.i };
@@ -827,13 +915,29 @@ function evalNode(g, id, ctx) {
     if (!budget(ctx)) return null;
     const cx = num(0), cy = num(1);
     const useExpr = P('bulgeSrc', 0) > 0.5 && node.paramIns && node.paramIns.bulge != null;
-    const abs = p.pts.map((q) => [cx + q[0], cy + q[1]]);
-    const closedP = (p.closed || 0) > 0.5;
-    const segs = closedP ? abs.length : abs.length - 1;
-    const pts = [];
-    if (abs.length) pts.push(abs[0]);
+    const V = p.pts.map((q) => [cx + q[0], cy + q[1]]);
+    const closedP = P('closed', 0) > 0.5;
+    const n = V.length;
+    if (!n) return shOut([[]], closedP);
+    // per-vertex corner fillets: round[i] is the lever length as a fraction of
+    // each adjacent edge (0 = sharp). The fillet is a quadratic whose control
+    // point IS the vertex — tangent to both edges by construction, exactly
+    // like bulge arcs. Open paths keep their endpoints sharp.
+    const lever = (i) => {
+      const interior = closedP || (i > 0 && i < n - 1);
+      return interior ? clamp((p.round && p.round[i]) || 0, 0, 0.45) : 0;
+    };
+    const entry = [], exit = [];
+    for (let i = 0; i < n; i++) {
+      const u = lever(i), v = V[i], a = V[(i - 1 + n) % n], b = V[(i + 1) % n];
+      entry[i] = u > 0.01 ? [v[0] + (a[0] - v[0]) * u, v[1] + (a[1] - v[1]) * u] : v;
+      exit[i] = u > 0.01 ? [v[0] + (b[0] - v[0]) * u, v[1] + (b[1] - v[1]) * u] : v;
+    }
+    const segs = closedP ? n : n - 1;
+    const pts = [exit[0]];
     for (let i = 0; i < segs; i++) {
-      const a = abs[i], b = abs[(i + 1) % abs.length];
+      const j = (i + 1) % n;
+      const a = exit[i], b = entry[j];
       let bl;
       if (useExpr) { // L1: curvature as an expression of vertex index
         const r = evalNode(g, node.paramIns.bulge, { ...ctx, vi: segs > 1 ? i / segs : 0 });
@@ -847,8 +951,16 @@ function evalNode(g, id, ctx) {
         const c = [a[0] + dx * sk - dy * bl, a[1] + dy * sk + dx * bl]; c.q = 1; pts.push(c);
       }
       pts.push(b);
+      const u = lever(j);
+      if (u > 0.01) {
+        const c = [V[j][0], V[j][1]]; c.q = 1; pts.push(c); // fillet ctrl = the corner itself
+        if (!(closedP && j === 0)) pts.push(exit[j]); // wrap: final Q ends exactly on the start point
+      }
     }
-    if (closedP && pts.length > 1) pts.pop(); // last == first
+    if (closedP && pts.length > 1 && !pts[pts.length - 1].q) {
+      const A = pts[0], B = pts[pts.length - 1];
+      if (Math.abs(A[0] - B[0]) < 1e-9 && Math.abs(A[1] - B[1]) < 1e-9) pts.pop();
+    }
     return shOut([pts], closedP);
   }
 
@@ -908,13 +1020,14 @@ function evalNode(g, id, ctx) {
     const mode = I('mode', 0, 4, 0), radius = Math.abs(P('radius', 0)), spread = P('spread', 0);
     const rot0 = P('rot0', 0), mirror = P('mirror', 0) > 0.5, spin = P('spin', 0), grow = P('grow', 0);
     const pivot = P('pivot', 0) > 0.5;
+    const drift = P('drift', 0); // per-copy seeded divergence of the body's literal genes
     const shapes = [];
     for (let k = 0; k < n; k++) {
       if (ctx.f && ctx.f.left <= 0) break;
       const tk = n > 1 ? k / (n - 1) : 0;
-      const body = evalNode(g, node.in[0], { ...ctx, i: tk });
+      const body = evalNode(g, node.in[0], { ...ctx, i: tk, o: driftOverrides(g, node.in[0], id, k, drift, ctx.o) });
       if (!body || body.t !== 'D') continue;
-      if (tooMany(ctx, body.shapes)) break;
+      if (k > 0 && tooMany(ctx, body.shapes)) break; // first instance always paints
       let dx = 0, dy = 0, rot = 0;
       if (mode === 0) { const th = (rot0 + tk * spread) * TAU; dx = radius * Math.cos(th); dy = radius * Math.sin(th); rot = th; }
       else if (mode === 1) { const th = rot0 * TAU; dx = Math.cos(th) * (tk - 0.5) * 2 * radius; dy = Math.sin(th) * (tk - 0.5) * 2 * radius; }
@@ -944,6 +1057,7 @@ function evalNode(g, id, ctx) {
     if (!A || A.t !== 'D') return B && B.t === 'D' ? B : null;
     const n = clamp(Math.round(P('n', 4)), 2, 24), align = P('align', 0) > 0.5, phase = P('phase', 0.5);
     const scl = clamp(Math.abs(P('scale', 0.1)), 0.005, 0.6), show = P('show', 0) > 0.5;
+    const drift = P('drift', 0); // per-bead seeded divergence of the traveler's literal genes
     const out = [];
     if (show && B && B.t === 'D') out.push(...B.shapes);
     let pathPts = null;
@@ -960,9 +1074,9 @@ function evalNode(g, id, ctx) {
         const segL = (L[si2] - L[si2 - 1]) || 1, u = clamp((target - L[si2 - 1]) / segL, 0, 1);
         const pos = [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
         const tang = Math.atan2(b[1] - a[1], b[0] - a[0]);
-        const body = evalNode(g, node.in[0], { ...ctx, i: tk });
+        const body = evalNode(g, node.in[0], { ...ctx, i: tk, o: driftOverrides(g, node.in[0], id, k, drift, ctx.o) });
         if (!body || body.t !== 'D') continue;
-        if (tooMany(ctx, body.shapes)) break;
+        if (k > 0 && tooMany(ctx, body.shapes)) break; // first bead always paints
         const cent = centroidOf(body.shapes), ext = extentOf(body.shapes);
         const f2 = clamp(scl / ext, 0.01, 4);
         const rot = align ? tang : 0, co = Math.cos(rot) * f2, si3 = Math.sin(rot) * f2;
@@ -1032,7 +1146,7 @@ function evalNode(g, id, ctx) {
     const out = [];
     for (let j = 0; j < copies; j++) {
       if (ctx.f && ctx.f.left <= 0 && j > 0) break;
-      if (tooMany(ctx, body.shapes)) break;
+      if (j > 0 && tooMany(ctx, body.shapes)) break; // first copy always paints — partial, not empty
       const phi = (rot0 + Math.floor(j / 2) / k) * TAU, isRefl = refl && j % 2 === 1;
       const c = Math.cos(phi), s = Math.sin(phi);
       const m00 = c, m01 = isRefl ? s : -s, m10 = s, m11 = isRefl ? -c : c;
@@ -1046,28 +1160,13 @@ function evalNode(g, id, ctx) {
   if (op === 'variant') { // L3: gene duplication + divergence at expression time
     const n = clamp(Math.round(P('n', 2)), 1, 8), drift = P('drift', 0.3);
     const bodyId = node.in[0];
-    const reach = reachable(g, bodyId);
     const shapes = [];
     for (let k = 0; k < n; k++) {
       if (ctx.f && ctx.f.left <= 0) break;
-      const o = new Map();
-      if (drift > 0.02) {
-        const rng = mulberry32(((g.seed || 1) * 2654435761 ^ (id * 40503) ^ (k * 2246822519)) >>> 0);
-        for (const rid of reach) {
-          const nd = g.nodes[rid];
-          if (!nd || !nd.params || !OPS[nd.op]) continue;
-          const ov = {}; let any = false;
-          for (const key in nd.params) {
-            if (typeof nd.params[key] !== 'number') continue;
-            if (nd.paramIns && nd.paramIns[key] != null) continue; // expressions are structure
-            ov[key] = jitterParam(nd.op, key, nd.params[key], drift, rng); any = true;
-          }
-          if (any) o.set(rid, ov);
-        }
-      }
+      const o = driftOverrides(g, bodyId, id, k, drift, ctx.o);
       const body = evalNode(g, bodyId, { ...ctx, o, i: n > 1 ? k / (n - 1) : 0 });
       if (body && body.t === 'D') {
-        if (tooMany(ctx, body.shapes)) break;
+        if (k > 0 && tooMany(ctx, body.shapes)) break; // first pass always paints
         shapes.push(...body.shapes);
       }
     }
@@ -1166,7 +1265,7 @@ function pathEl(s, st) {
   if (s.grad) {
     const key = JSON.stringify([s.grad.a, s.grad.b, s.grad.type, Math.round(s.grad.ang * 100), s.grad.mid, s.grad.midOff]);
     let id = st.gradMap.get(key);
-    if (!id) { id = `g${st.n++}`; st.defs.appendChild(gradDef(id, s.grad.a, s.grad.b, s.grad.type, s.grad.ang, s.grad.mid, s.grad.midOff)); st.gradMap.set(key, id); }
+    if (!id) { id = `${st.uid}g${st.n++}`; st.defs.appendChild(gradDef(id, s.grad.a, s.grad.b, s.grad.type, s.grad.ang, s.grad.mid, s.grad.midOff)); st.gradMap.set(key, id); }
     at.fill = `url(#${id})`;
   } else if (s.fill) {
     at.fill = hsl(s.fill);
@@ -1202,7 +1301,7 @@ function emitEntries(parent, entries, st) {
   for (const e of entries) {
     if (e.kind === 'g') {
       flush();
-      const gid = `c${st.n++}`;
+      const gid = `${st.uid}c${st.n++}`;
       const invert = e.clip.invert;
       const grp = el('g', invert ? { mask: `url(#${gid})` } : { 'clip-path': `url(#${gid})` });
       const container = invert
@@ -1227,8 +1326,15 @@ function emitEntries(parent, entries, st) {
   }
   flush();
 }
+// url(#id) resolves DOCUMENT-wide, not per-<svg>: with 8 inline SVGs on the
+// page, per-render ids ("bgg", "g0", "c0"…) all collide and every url() in a
+// later cell silently resolves to the PARENT cell's defs — a child painted
+// with the parent's gradient/clip changes appearance the moment it is
+// selected. Namespace every id with a per-render counter.
+let SVG_UID = 0;
 function genomeToSvg(g0, size = 1024) {
   const g = expandGenome(g0);
+  const uid = SVG_UID++;
   const svg = el('svg', { xmlns: NS, viewBox: '0 0 1 1', width: size, height: size, preserveAspectRatio: 'xMidYMid meet' });
   const defs = el('defs');
   svg.appendChild(defs);
@@ -1237,10 +1343,10 @@ function genomeToSvg(g0, size = 1024) {
   const cB = g.palette[((Math.round(g.bg2) % pl) + pl) % pl];
   let bgFill = hsl(cA);
   const bgGrad = Math.round(g.bgGrad || 0);
-  if (bgGrad > 0) { defs.appendChild(gradDef('bgg', cA, cB, bgGrad, g.bgA || 0)); bgFill = 'url(#bgg)'; }
+  if (bgGrad > 0) { defs.appendChild(gradDef(`${uid}bg`, cA, cB, bgGrad, g.bgA || 0)); bgFill = `url(#${uid}bg)`; }
   svg.appendChild(el('rect', { x: 0, y: 0, width: 1, height: 1, fill: bgFill }));
   const root = evalNode(g, g.root, { x: 0.5, y: 0.5, i: 0, vi: 0, depth: 0, f: { left: MAX_SHAPES, evals: 0 } });
-  if (root && root.t === 'D') emitEntries(svg, root.shapes, { defs, gradMap: new Map(), n: 0 });
+  if (root && root.t === 'D') emitEntries(svg, root.shapes, { defs, gradMap: new Map(), n: 0, uid });
   return svg;
 }
 
