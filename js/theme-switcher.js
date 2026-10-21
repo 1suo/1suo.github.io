@@ -7,6 +7,7 @@
       color: "gold",
       hover: "yellow",
       visited: "darkkhaki",
+      visitedHover: "khaki",
       icon: "🌞",
       label: "light",
     },
@@ -16,6 +17,7 @@
       color: "mediumblue",
       hover: "dodgerblue",
       visited: "darkorchid",
+      visitedHover: "mediumorchid",
       icon: "🌚",
       label: "dark",
     },
@@ -41,6 +43,7 @@
     root.style.setProperty("--link-color", values.color);
     root.style.setProperty("--link-hover", values.hover);
     root.style.setProperty("--link-visited", values.visited);
+    root.style.setProperty("--link-visited-hover", values.visitedHover);
 
     if (button) {
       button.textContent = values.icon;

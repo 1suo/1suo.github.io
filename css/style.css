@@ -181,7 +181,7 @@ body a:visited {
 }
 
 body a:visited:hover {
-  color: var(--link-hover);
+  color: var(--link-visited-hover);
 }
 
 body article header h1 a,
@@ -197,7 +197,7 @@ body article header h2 a:visited {
 /* Needs the body prefix to outrank awsm.css's article-header rules. */
 body article header h1 a:visited:hover,
 body article header h2 a:visited:hover {
-  color: var(--link-hover);
+  color: var(--link-visited-hover);
 }
 
 h1 a,
