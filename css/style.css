@@ -447,7 +447,7 @@ body .sidebar {
 .sidebar .sidebar-nav > ul > li:has(.app-sub-sidebar .active) > a {
   background: color-mix(in srgb, currentColor 15%, transparent);
   border-radius: 8px;
-  color: var(--link-hover);
+  color: var(--link-color);
   display: inline-block;
   margin: -0.15rem -0.5rem;
   padding: 0.15rem 0.5rem;

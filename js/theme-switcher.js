@@ -17,7 +17,7 @@
       color: "mediumblue",
       hover: "dodgerblue",
       visited: "darkorchid",
-      visitedHover: "mediumorchid",
+      visitedHover: "orchid",
       icon: "🌚",
       label: "dark",
     },
