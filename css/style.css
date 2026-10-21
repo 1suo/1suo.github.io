@@ -11,7 +11,7 @@ code,
 kbd,
 var,
 samp {
-  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
 }
 
 :focus-visible {
