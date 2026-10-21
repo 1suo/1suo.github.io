@@ -15,8 +15,8 @@
               "state": {
                 "file": "_index.md",
                 "mode": "source",
-                "backlinks": false,
-                "source": false
+                "source": false,
+                "backlinks": false
               },
               "icon": "lucide-file",
               "title": "_index"
@@ -41,7 +41,10 @@
             "state": {
               "type": "file-explorer",
               "state": {
-                "sortOrder": "alphabetical"
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
               },
               "icon": "lucide-folder-closed",
               "title": "Files"
@@ -95,6 +98,7 @@
   },
   "left-ribbon": {
     "hiddenItems": {
+      "bases:Create new base": false,
       "switcher:Open quick switcher": false,
       "command-palette:Open command palette": false,
       "obsidian-kanban:Create new board": false
@@ -102,6 +106,9 @@
   },
   "active": "6d2b37180b74696f",
   "lastOpenFiles": [
+    "Pasted image 20261021102334.png",
+    "Pasted image 20261021102232.png",
+    "img/Pasted image 20261021101730.png",
     "_index.md~",
     "css/style.css~",
     "index.html~",
@@ -124,7 +131,6 @@
     "Pasted image 20240917134058.png",
     "js/main.js~",
     "html/header.html~",
-    "docs/README.md",
-    "docs/index.html"
+    "docs/README.md"
   ]
 }

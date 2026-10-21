@@ -72,3 +72,45 @@ test("does not swallow heading lines into footnotes or definition lists", functi
   assert.match(result, /<li id="footnote-note">/);
   assert.doesNotMatch(result, /<dt>##<\/dt>/);
 });
+
+test("rewrites bare wiki embeds note-relative (paste flow, both vaults)", function () {
+  const nested = transform("![[Pasted image 20251028173323.png]]", { route: "#/md/note" });
+  const root = transform("![[shot.png]]", { route: "#/" });
+
+  assert.equal(nested, "![](Pasted%20image%2020251028173323.png)");
+  assert.equal(root, "![](shot.png)");
+});
+
+test("normalizes explicit wiki paths, including parent-vault prefixed forms", function () {
+  const up = transform("![[../img/path13280.png]]", { route: "#/md/note" });
+  const fromParent = transform("![[1suo.github.io/img/path13282.png]]", { route: "#/md/note" });
+  const rootNote = transform("![[img/path13280.png]]", { route: "#/" });
+
+  assert.equal(up, "![](../img/path13280.png)");
+  assert.equal(fromParent, "![](../img/path13282.png)");
+  assert.equal(rootNote, "![](img/path13280.png)");
+});
+
+test("turns Obsidian resize pipes into width/height attributes", function () {
+  const w = transform("![[shot.png|300]]", { route: "#/md/note" });
+  const wh = transform("![[img/shot.png|640x480]]", { route: "#/md/note" });
+
+  assert.equal(w, '<img src="/md/shot.png" width="300" alt="">');
+  assert.equal(wh, '<img src="/img/shot.png" width="640" height="480" alt="">');
+});
+
+test("leaves non-image wiki links and code untouched", function () {
+  const markdown = [
+    "[[Some note]]",
+    "![[document.pdf]]",
+    "`![[code block.png]]`",
+    "```txt",
+    "![[fenced.png]]",
+    "```",
+  ].join("\n");
+  const result = transform(markdown, { route: "#/md/note" });
+
+  assert.match(result, /\[\[Some note\]\]/);
+  assert.match(result, /!\[\[document\.pdf\]\]/);
+  assert.doesNotMatch(result, /\/img\//);
+});

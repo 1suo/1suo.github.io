@@ -10,6 +10,7 @@
     let source = protectFencedCode(markdown, protectedParts);
 
     source = protect(source, /(`+)[\s\S]*?\1/g, protectedParts);
+    source = renderWikiEmbeds(source, route);
     source = protect(source, /(\]\()([^\n)]*)(\))/g, protectedParts);
     source = renderDefinitionLists(source);
     source = renderFootnotes(source, route);
@@ -55,6 +56,61 @@
     const placeholder = "\u0000MDX" + parts.length + "\u0000";
     parts.push(value);
     return placeholder;
+  }
+
+  // Obsidian wiki image embeds -> plain markdown docsify can render.
+  // Both the nested vault and the parent vault use attachmentFolderPath "./"
+  // (paste lands beside the note), so a bare name resolves note-relative and
+  // the flow is identical regardless of which vault window you edit in.
+  // ![[name.png]]        -> beside the note (paste flow, both vaults)
+  // ![[../img/x.png]]    -> explicit path, normalized repo-root-relative
+  // ![[1suo.github.io/img/x.png]] -> parent-vault form, repo prefix stripped
+  // ![[name.png|300]]    -> 300 is the drag-resize width Obsidian stores
+  //                         (also 300x200); emitted as <img> width/height with
+  //                         a pre-resolved src (raw HTML bypasses docsify)
+  const VAULT_PREFIX_RE = /^1suo\.github\.io\//;
+  const WIKI_IMAGE_RE = /\.(png|jpe?g|gif|webp|avif|svg|bmp|ico)$/i;
+
+  function renderWikiEmbeds(source, route) {
+    const dirMatch = route.replace(/^#/, "").match(/^(.*\/)/);
+    const dir = dirMatch ? dirMatch[1] : "/";
+    const enc = (p) => p.split("/").map(encodeURIComponent).join("/");
+    return source.replace(/!\[\[([^\[\]\n]+)\]\]/g, function (_, body) {
+      const parts = body.split("|");
+      const target = parts[0].trim();
+      if (!WIKI_IMAGE_RE.test(target.split("/").pop())) return _; // not an image — untouched
+      const extra = parts.length > 1 ? parts[1].trim() : "";
+      let href, htmlSrc;
+      if (target.indexOf("/") >= 0) {
+        // docsify prepends the note's folder to relative hrefs, so climb to the
+        // repo root with ../ and let the browser normalise (../img/x -> /img/x)
+        const abs = normalizePath("/" + target.replace(VAULT_PREFIX_RE, ""));
+        const depth = dir.split("/").filter(Boolean).length;
+        href = (depth ? "../".repeat(depth) : "") + abs.replace(/^\//, "");
+        htmlSrc = abs;
+      } else {
+        href = target; // bare name: docsify resolves it against the note's folder
+        htmlSrc = normalizePath(dir + target);
+      }
+      const size = extra.match(/^(\d+)(?:x(\d+))?$/);
+      if (size) {
+        return (
+          '<img src="' + enc(htmlSrc) + '" width="' + size[1] + '"' +
+          (size[2] ? ' height="' + size[2] + '"' : "") +
+          ' alt="">'
+        );
+      }
+      return "![" + extra + "](" + enc(href) + ")";
+    });
+  }
+
+  function normalizePath(path) {
+    const out = [];
+    path.split("/").forEach(function (segment) {
+      if (segment === "..") out.pop();
+      else if (segment !== "." && segment !== "") out.push(segment);
+    });
+    return "/" + out.join("/");
   }
 
   function renderDefinitionLists(source) {
