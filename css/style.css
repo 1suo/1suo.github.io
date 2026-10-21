@@ -431,13 +431,22 @@ body .sidebar {
   padding-left: 0.75rem;
 }
 
-.sidebar .sidebar-nav > ul > li.active > a {
+/* Docsify's scroll-spy keeps a single .active li and moves it from the
+   page link to a section link inside the page's outline on scroll.
+   Keep the page pill lit while any of its sections is active, and show
+   which section is in view. */
+.sidebar .sidebar-nav > ul > li.active > a,
+.sidebar .sidebar-nav > ul > li:has(.app-sub-sidebar .active) > a {
   background: color-mix(in srgb, currentColor 15%, transparent);
   border-radius: 8px;
   color: var(--link-hover);
   display: inline-block;
   margin: -0.15rem -0.5rem;
   padding: 0.15rem 0.5rem;
+}
+
+.sidebar .app-sub-sidebar li.active > a {
+  color: var(--link-hover);
 }
 
 .sidebar > footer {
