@@ -3,7 +3,7 @@
 body {
   background: transparent;
   color: inherit;
-  font-family: system-ui, sans-serif;
+  font-family: "PT Sans", serif;
   height: 100vh;
   margin: 0;
 }
@@ -11,7 +11,11 @@ code,
 kbd,
 var,
 samp {
-  font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  font-family: "PT Mono", monospace;
+}
+
+footer {
+  font-family: "PT Serif Caption", serif;
 }
 
 :focus-visible {
@@ -46,10 +50,16 @@ body .content {
 h1,
 h2,
 h3,
-h4,
+h4 {
+  color: inherit;
+  font-family: "PT Serif", serif;
+  margin-bottom: 1rem;
+}
+
 h5,
 h6 {
   color: inherit;
+  font-family: "PT Sans", serif;
   margin-bottom: 1rem;
 }
 
@@ -155,6 +165,7 @@ blockquote {
   /* font-style: italic; */
   padding: 1rem;
   margin: 1rem 0;
+  font-family: "PT Serif", serif;
 }
 
 body a {
