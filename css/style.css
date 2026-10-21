@@ -3,7 +3,7 @@
 body {
   background: transparent;
   color: inherit;
-  font-family: "PT Sans", serif;
+  font-family: "PT Sans", sans-serif;
   height: 100vh;
   margin: 0;
 }
@@ -15,7 +15,7 @@ samp {
 }
 
 footer {
-  font-family: "PT Serif Caption", serif;
+  /* font-family: "PT Serif Caption", serif; */
 }
 
 :focus-visible {
@@ -52,14 +52,14 @@ h2,
 h3,
 h4 {
   color: inherit;
-  font-family: "PT Serif", serif;
+  /* font-family: "PT Serif", serif; */
   margin-bottom: 1rem;
 }
 
 h5,
 h6 {
   color: inherit;
-  font-family: "PT Sans", serif;
+  /* font-family: "PT Serif", serif; */
   margin-bottom: 1rem;
 }
 
@@ -163,9 +163,10 @@ blockquote {
   background-color: #77777733;
   opacity: 0.9;
   /* font-style: italic; */
-  padding: 1rem;
+  /* padding: 1rem; */
+  padding: 1rem 1.5rem;
   margin: 1rem 0;
-  font-family: "PT Serif", serif;
+  /* font-family: "PT Serif", serif; */
 }
 
 body a {
@@ -464,7 +465,6 @@ body .sidebar {
   font-size: 0.8rem;
   margin-top: auto;
   padding: 0 1rem 1rem;
-  position: sticky;
 }
 
 .sidebar > footer p {
