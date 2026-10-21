@@ -7,9 +7,11 @@ body {
   height: 100vh;
   margin: 0;
 }
-code {
-  font-family: ui-monospace, "Cascadia Code", Consolas, Menlo,
-    "DejaVu Sans Mono", monospace;
+code,
+kbd,
+var,
+samp {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
 }
 
 :focus-visible {
