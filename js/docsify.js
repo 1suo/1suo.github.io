@@ -112,21 +112,9 @@ function setupSidebar() {
   };
 }
 
-function setupResponsiveFooter(sidebar, mobileViewport) {
+function setupSidebarFooter(sidebar) {
   const footer = document.querySelector("body > footer");
-  const footerSlot = document.querySelector("#page-footer-slot");
-  if (!footer || !footerSlot) return;
-
-  function placeFooter() {
-    if (mobileViewport.matches) {
-      footerSlot.after(footer);
-    } else {
-      sidebar.appendChild(footer);
-    }
-  }
-
-  placeFooter();
-  mobileViewport.addEventListener("change", placeFooter);
+  if (footer) sidebar.appendChild(footer);
 }
 
 function setupHashtagSearch(search, setSidebarOpen, mobileViewport) {
@@ -323,7 +311,7 @@ window.$docsify = {
         renderSidebarHashtags();
         const sidebarUi = setupSidebar();
         if (!sidebarUi) return;
-        setupResponsiveFooter(sidebarUi.sidebar, sidebarUi.mobileViewport);
+        setupSidebarFooter(sidebarUi.sidebar);
         setupHashtagSearch(
           sidebarUi.search,
           sidebarUi.setOpen,

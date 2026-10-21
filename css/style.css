@@ -458,10 +458,13 @@ body .sidebar {
 }
 
 .sidebar > footer {
+  background: var(--sidebar-background);
+  bottom: 0;
   color: inherit;
   font-size: 0.8rem;
   margin-top: auto;
   padding: 0 1rem 1rem;
+  position: sticky;
 }
 
 .sidebar > footer p {
@@ -475,13 +478,6 @@ body .sidebar {
 /* Mobile sidebar */
 
 @media (max-width: 768px) {
-  body > footer {
-    box-sizing: border-box;
-    color: var(--body-color);
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-  }
-
   body .content {
     margin-left: 0;
   }
@@ -536,6 +532,7 @@ body .sidebar {
 
   .sidebar-actions {
     display: none;
+    flex-direction: row-reverse;
     justify-content: space-between;
     right: 0.5rem;
   }
