@@ -268,7 +268,7 @@ body .sidebar {
   position: fixed;
   right: auto;
   text-align: left;
-  top: 1rem;
+  top: 0.5rem;
   width: 300px;
   z-index: 20;
 }
@@ -277,9 +277,9 @@ body .sidebar {
   align-items: center;
   display: none;
   gap: 0.5rem;
-  left: 0.5rem;
+  left: 1rem;
   position: fixed;
-  top: 0.5rem;
+  top: 1rem;
   z-index: 30;
 }
 
@@ -318,12 +318,13 @@ body .sidebar {
 .sidebar-actions button:hover,
 .sidebar .search .input-wrap button:hover,
 .sidebar-toggle:hover {
-  opacity: 0.65;
+  /* opacity: 0.65; */
 }
 
 .sidebar-actions .sidebar-close {
   display: none;
   font-size: 1.75rem;
+  background: var(--sidebar-background);
   line-height: 1;
 }
 
@@ -513,9 +514,12 @@ body .sidebar {
 
   .sidebar-toggle {
     display: block;
-    left: 0.5rem;
+    /* background: var(--sidebar-background); */
+    /* background-color: #77777733; */
+    background-color: color-mix(in srgb, var(--sidebar-background) 80%, #777777);
+    left: 1rem;
     position: fixed;
-    top: 0.5rem;
+    top: 1rem;
     z-index: 30;
   }
 

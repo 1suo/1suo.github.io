@@ -47,6 +47,7 @@
 
     if (button) {
       button.textContent = values.icon;
+      button.style.background = values.background;
       button.setAttribute("aria-label", values.label);
     }
     if (persist) localStorage.setItem("theme", name);
