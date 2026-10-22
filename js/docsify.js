@@ -293,7 +293,7 @@ window.$docsify = {
   subMaxLevel: 5,
   search: {
     paths: "auto",
-    placeholder: "Search",
+    placeholder: "Поиск",
     noData: "No results",
   },
   plugins: [
