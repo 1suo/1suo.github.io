@@ -66,7 +66,7 @@ code {
   font-size: 1rem;
   padding: 0.1rem 0.4rem;
   margin: 0.3rem;
-  background-color: #77777766;
+  background-color: #77777755;
   /* opacity: 0.9; */
   border-style: none;
 }
@@ -274,6 +274,7 @@ body .sidebar {
   display: none;
   gap: 0.5rem;
   left: 1rem;
+  right: 1rem;
   position: fixed;
   top: 1rem;
   z-index: 30;
@@ -550,7 +551,6 @@ body .sidebar {
     display: none;
     flex-direction: row-reverse;
     justify-content: space-between;
-    right: 0.5rem;
   }
 
   body.sidebar-is-open .sidebar-actions {
