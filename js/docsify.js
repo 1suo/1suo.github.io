@@ -59,7 +59,7 @@ function setupSidebar() {
       sidebar.removeAttribute("aria-label");
       setSidebarOpen(false, false);
       if (themeSwitcher && inputWrap) {
-        inputWrap.insertBefore(themeSwitcher, inputWrap.firstChild);
+        inputWrap.appendChild(themeSwitcher);
       }
     }
   }

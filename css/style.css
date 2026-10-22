@@ -68,7 +68,7 @@ code {
   font-size: 1rem;
   padding: 0.1rem 0.4rem;
   margin: 0.3rem;
-  background-color: #77777755;
+  background-color: #77777733;
   opacity: 0.9;
   border-style: none;
 }
@@ -395,6 +395,11 @@ body .sidebar {
   width: 2.5rem;
 }
 
+/* Shift the clear × left of the theme switcher when it shares the row. */
+.sidebar .search .input-wrap:has(> #theme-switcher) .clear-button {
+  right: 3rem;
+}
+
 .sidebar .search .clear-button.show {
   display: grid;
 }
@@ -516,6 +521,8 @@ body .sidebar {
 
   body.sidebar-is-open::before {
     backdrop-filter: blur(2px);
+    /* background-color: color-mix(in srgb, var(--link-color) 10%, transparent); */
+    background-color: #77777733;
     content: "";
     inset: 0;
     position: fixed;
