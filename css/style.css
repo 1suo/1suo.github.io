@@ -3,7 +3,7 @@
 body {
   background: transparent;
   color: inherit;
-  font-family: "PT Sans", sans-serif;
+  font-family: "Roboto", sans-serif;
   height: 100vh;
   margin: 0;
 }
@@ -11,11 +11,11 @@ code,
 kbd,
 var,
 samp {
-  font-family: "PT Mono", monospace;
+  font-family: "Roboto Mono", monospace;
 }
 
 footer {
-  font-family: "PT Mono", monospace;
+  font-family: "Roboto Mono", monospace;
 }
 
 :focus-visible {
@@ -52,14 +52,12 @@ h2,
 h3,
 h4 {
   color: inherit;
-  /* font-family: "PT Serif", serif; */
   margin-bottom: 1rem;
 }
 
 h5,
 h6 {
   color: inherit;
-  /* font-family: "PT Serif", serif; */
   margin-bottom: 1rem;
 }
 
@@ -166,7 +164,6 @@ blockquote {
   /* padding: 1rem; */
   padding: 1rem 1.5rem;
   margin: 1rem 0;
-  /* font-family: "PT Serif", serif; */
 }
 
 body a {
