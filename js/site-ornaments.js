@@ -43,12 +43,12 @@
     // -- line character --
     smooth: 2,        // curve samples per segment, 2–8 (studio: smooth)
     organic: 0,       // 0 geometric · 1 crisp · 2 soft · 3 organic (studio: style)
-    sym: 'both',         // ring symmetry: 'v' left≡right · 'h' top≡bottom · 'both' · 'none' (one wrap seam)
+    sym: 'none',         // ring symmetry: 'v' left≡right · 'h' top≡bottom · 'both' · 'none' (one wrap seam)
     readout: 'shards',   // how the plane reads the CA: null = roll per load · 'ray' radiates from the text · 'noise' smooth warp (distributes, but shears the texture) · 'shards' marquetry — pure CA inside each shard, offsets distribute
     // -- readout tuning, rolled per load (ray ignores all of these) --
     kSlope: [0.3, 0.75],  // noise: angular warp budget, ring px per plane px — how hard the courses meander
     gSlope: [0.06, 0.22], // noise: radial warp budget, generations per plane px — how hard the banding scrambles
-    shardN: [4, 32],      // shards: how many pieces the marquetry cuts
+    shardN: [6, 16],      // shards: how many pieces the marquetry cuts
     shardDk: [-30, 30],   // shards: per-shard ring offset span, cells — where on the ring each piece reads
     shardDg: [-5, 9],     // shards: per-shard generation offset span — negative regrows young lace mid-frame
     seedProc: 'noise',   // seed-row procedure: null = roll per load · harm/fm/square/chirp/noise/walk/pulse to pin
