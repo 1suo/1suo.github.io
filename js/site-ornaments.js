@@ -182,6 +182,10 @@
     var boxY1 = art.scrollHeight + (bottomRoom >= SETTINGS.sideMin ? bottomRoom : 0);
     var W = Math.round(boxX1 - boxX0);
     var H = Math.round(boxY1 - boxY0);
+    // never let the frame cross the viewport's right edge: the article and
+    // sidebar sit at fractional x, so Math.round can round the span UP and
+    // a sub-pixel overflow makes the whole page horizontally scrollable
+    W = Math.max(1, Math.min(W, Math.floor(doc.clientWidth - SETTINGS.edgePad - leftLimit)));
     if (W < 80 || H < 60) return;
 
     var inner = {
