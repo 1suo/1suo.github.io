@@ -131,6 +131,7 @@
       <option value="" selected>auto · roll per genome</option>
       <option value="ray">ray · radiate from the text</option>
       <option value="noise">noise · distributed meander</option>
+      <option value="shards">shards · marquetry of pure CA</option>
     </select>
   </div>
   <div class="hint">any elementary rule 0–255, hashed from the seed when blank</div>
@@ -569,7 +570,25 @@ function genCA(w, h, seed, o){
   //       generations per plane-px) keep the meander scale-free and
   //       neighbouring nodes never reading far-apart cells — contours
   //       stay chainable. Wavelength discipline as everywhere.
-  const READOUTS = ['ray', 'noise'];
+  //       BUT a smooth warp has gradient everywhere: adjacent nodes
+  //       step ≠ 1 generation and shear kk, so the automaton's own
+  //       texture is resampled non-uniformly — skipped/doubled
+  //       generations, smeared triangles — and the warp's own shapes
+  //       organise everything (a softer square-swirl rail). Which is
+  //       what shards exists to avoid.
+  // shards a marquetry of 6–16 Voronoi shards; each shard reads the
+  //       SAME ray geometry shifted by CONSTANTS (dk ring cells, dg
+  //       generations). Inside a shard the mapping is exactly ray's —
+  //       the automaton is never sheared, skipped or stretched; its
+  //       texture stays as crisp as ray mode. Distribution comes from
+  //       the per-shard offsets (young lace appears mid-frame, old
+  //       near the words); the only imposed geometry is the shard
+  //       EDGES — hard splices (softened by one blur pass at
+  //       organic ≥ 1), seed-rolled every genome, nothing to ride.
+  //       Symmetry: sites live on the folded plane, dk flips sign
+  //       across each fold axis, dg is even — mirror pairs read
+  //       mirrored cells, as with noise.
+  const READOUTS = ['ray', 'noise', 'shards'];
   const readout = READOUTS.includes(o.readout) ? o.readout : pick(r, READOUTS);
   let kOff = null, gOff = null;
   if (readout === 'noise'){
@@ -593,8 +612,16 @@ function genCA(w, h, seed, o){
         return v;
       };
     };
-    const kbase = mkField((r() * 1e9) | 0, [[500, 900, 1], [120, 300, 0.55], [26, 80, 0.3]], rrange(r, 0.3, 0.75));
-    const gbase = mkField((r() * 1e9) | 0, [[260, 700, 1], [80, 220, 0.5], [26, 70, 0.25]], rrange(r, 0.06, 0.22));
+    // slope budgets are genome knobs: o.kSlope (ring-px) / o.gSlope
+    // (generations) per plane-px, null = the internal rolls. Seeds are
+    // drawn in the same positions as the original inline rolls, so
+    // pinned and default genomes share one r-stream shape
+    const kW = (r() * 1e9) | 0;
+    const kS = o.kSlope != null ? +o.kSlope : rrange(r, 0.3, 0.75);
+    const kbase = mkField(kW, [[500, 900, 1], [120, 300, 0.55], [26, 80, 0.3]], kS);
+    const gW = (r() * 1e9) | 0;
+    const gS = o.gSlope != null ? +o.gSlope : rrange(r, 0.06, 0.22);
+    const gbase = mkField(gW, [[260, 700, 1], [80, 220, 0.5], [26, 70, 0.25]], gS);
     const mx2 = 2 * midX, my2 = 2 * midY;
     kOff = sym === 'v'    ? (x, y) => kbase(x, y) - kbase(mx2 - x, y)
          : sym === 'h'    ? (x, y) => kbase(x, y) - kbase(x, my2 - y)
@@ -604,6 +631,37 @@ function genCA(w, h, seed, o){
          : sym === 'h'    ? (x, y) => 0.5 * (gbase(x, y) + gbase(x, my2 - y))
          : sym === 'both' ? (x, y) => 0.25 * (gbase(x, y) + gbase(mx2 - x, y) + gbase(x, my2 - y) + gbase(mx2 - x, my2 - y))
          : gbase;
+  } else if (readout === 'shards'){
+    // sites live on the FOLDED plane, so the partition itself mirrors;
+    // dk sign-flips across each fold axis (the arc coordinate is odd
+    // under mirrors), dg is even (a distance) — same discipline as noise
+    const fw = sym === 'v' || sym === 'both' ? midX : w;
+    const fh = sym === 'h' || sym === 'both' ? midY : h;
+    const nS = o.shardN != null ? Math.max(1, Math.round(+o.shardN)) : irange(r, 6, 16);
+    // per-shard offset spans are [lo, hi] genome knobs (one roll per
+    // shard, so the site passes the RANGE, not a value); null = defaults
+    const dkR = Array.isArray(o.shardDk) ? o.shardDk : [-30, 30];   // ring cells
+    const dgR = Array.isArray(o.shardDg) ? o.shardDg : [-5, 9];     // generations
+    const sites = [];
+    for (let i = 0; i < nS; i++) sites.push({
+      x: rrange(r, 0, fw), y: rrange(r, 0, fh),
+      dk: Math.round(rrange(r, dkR[0], dkR[1])),
+      dg: Math.round(rrange(r, dgR[0], dgR[1])),
+    });
+    const shardAt = (x, y) => {
+      const qx = fw < w ? midX - Math.abs(x - midX) : x;
+      const qy = fh < h ? midY - Math.abs(y - midY) : y;
+      let best = sites[0], bd = Infinity;
+      for (const s of sites){
+        const d = (s.x - qx) * (s.x - qx) + (s.y - qy) * (s.y - qy);
+        if (d < bd){ bd = d; best = s; }
+      }
+      return best;
+    };
+    const sX = x => (sym === 'v' || sym === 'both') && x >= midX ? -1 : 1;
+    const sY = y => (sym === 'h' || sym === 'both') && y >= midY ? -1 : 1;
+    kOff = (x, y) => { const s = shardAt(x, y); return s.dk * cell * sX(x) * sY(y); };
+    gOff = (x, y) => shardAt(x, y).dg;
   }
   // Ring position = where the RAY from the text centre through (x, y)
   // leaves the text rectangle. Constant-position curves are straight rays,
@@ -1468,7 +1526,7 @@ const SURVEY_RANGES = {
 function rollSurvey(){
   const rr = (a, b) => +(a + Math.random() * (b - a)).toFixed(3);
   return {
-    readout: Math.random() < 0.5 ? 'ray' : 'noise',
+    readout: ['ray', 'noise', 'shards'][Math.floor(Math.random() * 3)],
     dens: rr(...SURVEY_RANGES.dens),
     rate: rr(...SURVEY_RANGES.rate),
     standoff: rr(...SURVEY_RANGES.standoff),

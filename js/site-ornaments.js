@@ -38,14 +38,19 @@
     minlen: 0,    // drop contours shorter than this × cell px (winners' absolute gates 2–35px)
     // -- stroke --
     matchDivider: true, // take width + color from the page's <hr> (tracks theme and restyles)
-    weight: 1, // bold line width in px when matchDivider is off
-    hair: 0.5,         // short lines draw at bold × this (1 = single weight, no tiers)
+    weight: 1, // stroke width in px when matchDivider is off (the site draws uniform ink — genCA's body/hair tiers are never read here)
     color: null,     // stroke color when matchDivider is off; null = currentColor
     // -- line character --
-    smooth: 8,        // curve samples per segment, 2–8 (studio: smooth)
+    smooth: 2,        // curve samples per segment, 2–8 (studio: smooth)
     organic: 0,       // 0 geometric · 1 crisp · 2 soft · 3 organic (studio: style)
-    sym: 'none',         // ring symmetry: 'v' left≡right · 'h' top≡bottom · 'both' · 'none' (one wrap seam)
-    readout: 'noise',   // how the plane reads the CA: null = roll per load · 'ray' radiates from the text · 'noise' warps ring AND generation readouts — lace distributes, no centre
+    sym: 'both',         // ring symmetry: 'v' left≡right · 'h' top≡bottom · 'both' · 'none' (one wrap seam)
+    readout: 'shards',   // how the plane reads the CA: null = roll per load · 'ray' radiates from the text · 'noise' smooth warp (distributes, but shears the texture) · 'shards' marquetry — pure CA inside each shard, offsets distribute
+    // -- readout tuning, rolled per load (ray ignores all of these) --
+    kSlope: [0.3, 0.75],  // noise: angular warp budget, ring px per plane px — how hard the courses meander
+    gSlope: [0.06, 0.22], // noise: radial warp budget, generations per plane px — how hard the banding scrambles
+    shardN: [4, 32],      // shards: how many pieces the marquetry cuts
+    shardDk: [-30, 30],   // shards: per-shard ring offset span, cells — where on the ring each piece reads
+    shardDg: [-5, 9],     // shards: per-shard generation offset span — negative regrows young lace mid-frame
     seedProc: 'noise',   // seed-row procedure: null = roll per load · harm/fm/square/chirp/noise/walk/pulse to pin
     // -- borders: REAL gaps in px (one-cell moats — the ornament between them
     //    is untouched; replaces the old distanding standoff window) --
@@ -53,8 +58,8 @@
     padOuter: { l: 16, r: 16, t: 32, b: 32 },   // gaps from the container bounds: left/right sides, top, bottom
     opacity: 1,    // ink strength of the ornament, 0–1
     // -- random genome per load --
-    dens: [0.1, 0.9],  // CA seed density (studio: density) — dead draws averaged 0.77
-    detail: [4, 12],   // grid cell in px, ABSOLUTE (winners 4.5–10, mean 7.1) — the frame-relative scaler is gone, it only pinned genCA's 10px clamp
+    dens: [0.4, 0.9],  // CA seed density (studio: density) — dead draws averaged 0.77
+    detail: [4, 16],   // grid cell in px, ABSOLUTE (winners 4.5–10, mean 7.1) — the frame-relative scaler is gone, it only pinned genCA's 10px clamp
     rate: [5.3, 10.5],    // pattern phases per z unit (studio: gen rate) — winners averaged 0.92
     z: [20, 100],        // phase slice — winners averaged 54, extremes leaned dead
     // -- generation depth --
@@ -80,6 +85,10 @@
       minlen: span(SETTINGS.minlen),
       depth: span(SETTINGS.depth),
       z: span(SETTINGS.z),
+      kSlope: span(SETTINGS.kSlope),
+      gSlope: span(SETTINGS.gSlope),
+      shardN: span(SETTINGS.shardN),
+      // shardDk/shardDg stay RANGES — genCA rolls once per shard
     };
   }
 
@@ -255,8 +264,6 @@
             variant: "frame",
             z: P.z,
             inner: inner,
-            weight: P.weight,
-            hair: SETTINGS.hair,
             maxlines: maxlines,
             minlen: P.minlen,
             dens: P.dens,
@@ -265,6 +272,11 @@
             depth: P.depth,
             sym: SETTINGS.sym,
             readout: SETTINGS.readout,
+            kSlope: P.kSlope,
+            gSlope: P.gSlope,
+            shardN: P.shardN,
+            shardDk: SETTINGS.shardDk,
+            shardDg: SETTINGS.shardDg,
             standoff: 0,
             seedProc: SETTINGS.seedProc,
             smooth: SETTINGS.smooth,
