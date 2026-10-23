@@ -3,7 +3,7 @@
 body {
   background: transparent;
   color: inherit;
-  font-family: "Roboto", sans-serif;
+  font-family: "Roboto Serif", serif;
   height: 100vh;
   margin: 0;
 }
@@ -38,10 +38,10 @@ body .markdown-section {
 }
 body .markdown-section {
   box-sizing: border-box;
-  padding-bottom: 5rem;
+  padding-bottom: 10rem;
   padding-left: 0.75rem;
   padding-right: 0.75rem;
-  padding-top: 5rem;
+  padding-top: 10rem;
 }
 body .content {
   margin-left: 332px;
@@ -246,6 +246,13 @@ button.hashtag {
 }
 
 /* Sidebar */
+
+/* UI chrome stays sans while the reading column is serif */
+body .sidebar,
+.sidebar-actions,
+.sidebar-toggle {
+  font-family: "Roboto", sans-serif;
+}
 
 body .sidebar {
   background: var(--sidebar-background);

@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Ornaments — procedural SVG playground</title>
+<style>
+  :root{
+    --chrome-bg:#0b0c10; --chrome-fg:#e6eef6; --chrome-cell:#0f1724; --chrome-line:#1d2a3a;
+    --paper:#fbfaf7; --ink:#22242a; --accent:#6ea8c9;
+  }
+  body[data-theme="dark"]{ --paper:#14161a; --ink:#d8dee6; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--chrome-bg);color:var(--chrome-fg);font:14px/1.45 Inter,system-ui,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
+
+  header{display:flex;gap:14px;align-items:center;padding:10px 16px;background:rgba(2,6,23,.72);position:sticky;top:0;z-index:5;border-bottom:1px solid var(--chrome-line)}
+  header .t{font-weight:600;letter-spacing:.04em}
+  .tabbtn{background:#06202b;color:var(--chrome-fg);border:1px solid rgba(255,255,255,.06);padding:6px 12px;border-radius:9px;cursor:pointer}
+  .tabbtn.on{background:#0a3a4d;border-color:var(--accent)}
+  .hspace{flex:1}
+  .status{font:12px/1.3 "Roboto Mono",monospace;color:#8aa2b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .layout{display:flex;flex:1;min-height:0}
+  aside{width:272px;flex:none;overflow-y:auto;padding:14px;border-right:1px solid var(--chrome-line);background:#0a0e16}
+  aside h3{margin:14px 0 6px;font:600 11px/1 Inter,system-ui;letter-spacing:.12em;text-transform:uppercase;color:#7d93a8}
+  aside h3:first-child{margin-top:0}
+  .sp{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .sp button{background:var(--chrome-cell);color:var(--chrome-fg);border:1px solid var(--chrome-line);border-radius:9px;padding:7px 8px;cursor:pointer;text-align:left}
+  .sp button small{display:block;color:#7d93a8;font-size:10.5px;margin-top:2px}
+  .sp button.on{border-color:var(--accent);background:#0d2531}
+  .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}
+  .row label{font-size:11.5px;color:#8aa2b8;min-width:52px}
+  input[type=text],input[type=number],select{background:#0d1420;color:var(--chrome-fg);border:1px solid var(--chrome-line);border-radius:7px;padding:5px 7px;font:12.5px "Roboto Mono",monospace}
+  input[type=number]{width:70px}
+  input[type=text]{flex:1;min-width:0}
+  input[type=range]{flex:1;accent-color:var(--accent)}
+  .chip{background:#0d1420;border:1px solid var(--chrome-line);color:#a8bccd;border-radius:999px;padding:4px 9px;font-size:11.5px;cursor:pointer}
+  .chip.on{border-color:var(--accent);color:#e6eef6;background:#0d2531}
+  .btn{background:#06202b;color:var(--chrome-fg);border:1px solid rgba(255,255,255,.08);padding:6px 10px;border-radius:8px;cursor:pointer;font-size:12.5px}
+  .btn:hover{background:#0a3245}
+  .hint{font-size:11px;color:#5f7288;margin-top:2px}
+
+  main{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;align-items:center;gap:14px}
+  .paper{background:var(--paper);color:var(--ink);width:100%;max-width:900px;border-radius:10px;padding:34px 40px;box-shadow:0 8px 40px rgba(0,0,0,.45);--orn-bg:var(--paper)}
+  .paper.naked{padding:26px;display:flex;align-items:center;justify-content:center;min-height:240px}
+  .paper .prose{font:16px/1.62 Georgia,"Times New Roman",serif}
+  .paper .prose h2{font:600 22px/1.3 Georgia,serif;margin:0 0 .5em}
+  .paper .prose p{margin:0 0 1em}
+  .ornament{margin:20px auto;color:var(--ink);cursor:pointer}
+  .ornament svg{display:block;width:100%;height:auto}
+  .ornament:hover{color:#3d5a73}
+  .stage{position:relative;color:var(--ink);cursor:pointer;padding:32px 4px}
+  .stage .prose{position:relative;z-index:1;font:16px/1.62 Georgia,"Times New Roman",serif;padding:10px 8px}
+  .stage .prose h2{font:600 22px/1.3 Georgia,serif;margin:0 0 .5em}
+  .stage .prose p{margin:0}
+  .stage svg{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+  .stage.bands .prose{width:100%}
+  @media (min-width:641px){ .stage:not(.bands) .prose{width:74%;margin:0 auto} }
+
+  #scrolltest{display:none;width:100%;max-width:720px}
+  #scrolltest article{background:var(--paper);color:var(--ink);border-radius:10px;padding:34px 40px;--orn-bg:var(--paper);font:16px/1.62 Georgia,serif}
+  #scrolltest article h2{font:600 22px/1.3 Georgia,serif;margin:0 0 .6em}
+  #scrolltest article p{margin:0 0 1.05em}
+  .sec{position:relative;color:var(--ink);cursor:pointer}
+  .sec .secp{position:relative;z-index:1;font-size:16px;line-height:1.62}
+  .sec svg{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+  .sectag{font:10.5px "Roboto Mono",monospace;color:#7d93a8;text-align:center;margin:3px 0 18px}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#123243;color:#dff1fb;border:1px solid var(--accent);padding:8px 14px;border-radius:9px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:9}
+  .toast.show{opacity:1}
+
+  #rankbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:100%;max-width:900px;background:#0a0e16;border:1px solid var(--chrome-line);border-radius:10px;padding:10px 14px}
+  #rankbar[hidden]{display:none}
+  .rbtn{width:34px;height:34px;border-radius:9px;background:#0d2531;border:1px solid var(--accent);color:#e6eef6;font:600 15px Inter,system-ui,sans-serif;cursor:pointer}
+  .rbtn:hover{background:#12455e}
+  #svInfo{font:11px/1.5 "Roboto Mono",monospace;color:#8aa2b8}
+  #logCount{font:11px "Roboto Mono",monospace;color:#7d93a8;white-space:nowrap}
+  input:disabled,button:disabled{opacity:.35;cursor:not-allowed}
+  @media (max-width:860px){ aside{width:230px} .paper{padding:22px 18px} #scrolltest article{padding:22px 18px} }
+</style>
+</head>
+<body>
+<header>
+  <div class="t">Ornaments</div>
+  <button class="tabbtn on" id="tabStudio">Studio</button>
+  <button class="tabbtn" id="tabScroll">Scroll test</button>
+  <div class="hspace"></div>
+  <div class="status" id="status"></div>
+</header>
+
+<div class="layout">
+<aside id="panelCA">
+  <h3>Mode</h3>
+  <div class="row">
+    <button class="chip on" id="modeFrame">frame — all four sides</button>
+    <button class="chip" id="modeBands">bands — top &amp; bottom</button>
+  </div>
+  <h3>Strip geometry</h3>
+  <div class="row"><label>top/bot</label><input type="range" id="stripTB" min="14" max="90" step="1" value="52"/><span class="hint" id="stripTBv">52</span></div>
+  <div class="row"><label>sides</label><input type="range" id="stripS" min="0" max="160" step="1" value="72"/><span class="hint" id="stripSv">72</span></div>
+  <div class="row"><label>standoff</label><input type="range" id="standoff" min="2" max="18" step="0.5" value="5"/><span class="hint" id="standoffv">5</span></div>
+  <div class="row"><label>inner pad</label><input type="range" id="padInner" min="0" max="60" step="1" value="6"/><span class="hint" id="padInnerv">6 px</span></div>
+  <div class="row"><label>outer pad</label><input type="range" id="padOuter" min="0" max="60" step="1" value="6"/><span class="hint" id="padOuterv">6 px</span></div>
+  <div class="hint">distance kept between lines, text hole and frame edge</div>
+  <h3>Field (the automaton)</h3>
+  <div class="row"><label>rule</label>
+    <input type="number" id="rule" min="0" max="255" placeholder="auto — from seed"/>
+  </div>
+  <div class="row"><label>symmetry</label>
+    <select id="sym">
+      <option value="v" selected>v · left≡right</option>
+      <option value="h">h · top≡bottom</option>
+      <option value="both">both · fourfold</option>
+      <option value="none">none · wrap seam</option>
+    </select>
+  </div>
+  <div class="row"><label>seed row</label>
+    <select id="seedProc">
+      <option value="" selected>auto · roll per genome</option>
+      <option value="harm">harm · sinusoid family</option>
+      <option value="fm">fm · modulated carrier</option>
+      <option value="square">square · odd harmonics</option>
+      <option value="chirp">chirp · frequency sweep</option>
+      <option value="noise">noise · 4 octaves</option>
+      <option value="walk">walk · knot spline</option>
+      <option value="pulse">pulse · plateaus</option>
+    </select>
+  </div>
+  <div class="hint">any elementary rule 0–255, hashed from the seed when blank</div>
+  <div class="row"><label>density</label><input type="range" id="dens" min="0.15" max="0.6" step="0.01" value="0.4"/><span class="hint" id="densv">0.40</span></div>
+  <div class="row"><label>gen rate</label><input type="range" id="rate" min="0.05" max="1.5" step="0.05" value="0.4"/><span class="hint" id="ratev">0.40</span></div>
+  <div class="hint">how fast the seed pattern morphs per z unit</div>
+  <h3>Slice</h3>
+  <div class="row"><label>z</label><input type="range" id="zsel" min="0" max="600" step="0.1" value="0"/><span class="hint" id="zval">0.0</span></div>
+  <div class="row">
+    <button class="btn" id="driftBtn">▶ drift</button>
+    <input type="range" id="driftSpd" min="0.005" max="0.4" step="0.005" value="0.03" style="flex:1"/>
+  </div>
+  <div class="hint">drift speed default is a slow breathe, not a race</div>
+  <h3>Line craft</h3>
+  <div class="row"><label>style</label><input type="range" id="organic" min="0" max="3" step="1" value="0"/><span class="hint" id="organicv">geometric</span></div>
+  <div class="hint">0 geometric · 1 crisp · 2 soft · 3 organic — blur & curve smoothing</div>
+  <div class="row"><label>detail</label><input type="range" id="detail" min="2.5" max="8" step="0.25" value="4"/><span class="hint" id="detailv">4.0 px</span></div>
+  <div class="row"><label>smooth</label><input type="range" id="smooth" min="2" max="8" step="1" value="4"/><span class="hint" id="smoothv">4 /seg</span></div>
+  <div class="row"><label>weight</label><input type="range" id="bodyW" min="0.5" max="2.5" step="0.05" value="1"/><span class="hint" id="bodyWv">1.00</span></div>
+  <div class="hint">detail = grid resolution · smooth = curve samples per segment (style ≥ 1)</div>
+  <h3>Seed</h3>
+  <div class="row">
+    <input type="number" id="seed" value="42"/>
+    <button class="btn" id="dice" title="random seed (R)">🎲</button>
+  </div>
+  <div class="row"><input type="text" id="semantic" placeholder="semantic text → seed"/></div>
+  <div class="row">
+    <button class="btn" id="themeBtn">◐ paper</button>
+    <button class="btn" id="copyBtn">Copy SVG</button>
+  </div>
+  <div class="hint">keys: R reroll · T paper · D drift · 1–5 rate (survey)</div>
+  <h3>Survey</h3>
+  <div class="row"><button class="chip" id="surveyBtn">🎯 random survey</button></div>
+  <div class="hint">rolls wide ranges every reroll; ink pinned to the site (1px gray · geometric · smooth 2 · no tiers). Rate each sample 1–5, then copy the log and send it back — it becomes the site's SETTINGS ranges.</div>
+</aside>
+<aside id="panelLegacy" hidden>
+  <h3>Species (legacy experiments)</h3>
+  <div class="sp" id="species"></div>
+  <h3>Variant</h3>
+  <div class="row"><select id="variant"></select></div>
+  <h3>Seed</h3>
+  <div class="row">
+    <input type="number" id="seed2" value="42"/>
+    <button class="btn" id="dice2">🎲</button>
+  </div>
+  <div class="row"><input type="text" id="semantic2" placeholder="semantic text → seed"/></div>
+  <h3>Box</h3>
+  <div class="row">
+    <label>W × H</label>
+    <input type="number" id="w" value="640" min="60" max="1400"/>
+    <input type="number" id="h" value="240" min="40" max="900"/>
+  </div>
+  <h3>Ink</h3>
+  <div class="row"><label>stroke</label><input type="range" id="sw" min="0.6" max="3" step="0.1" value="1.1"/></div>
+  <div class="row">
+    <button class="btn" id="themeBtn2">◐ paper</button>
+    <button class="btn" id="animBtn">draw-in</button>
+  </div>
+  <div class="hint">keys 1–6 switch species · the CA frame lives in the other panel</div>
+</aside>
+
+<main>
+  <div class="paper" id="paper"></div>
+  <div id="rankbar" hidden>
+    <span class="hint" style="margin:0">rate</span>
+    <button class="rbtn" data-r="1">1</button>
+    <button class="rbtn" data-r="2">2</button>
+    <button class="rbtn" data-r="3">3</button>
+    <button class="rbtn" data-r="4">4</button>
+    <button class="rbtn" data-r="5">5</button>
+    <button class="btn" id="skipBtn" title="reroll without rating">⏭ skip</button>
+    <div class="hspace"></div>
+    <span id="svInfo"></span>
+    <button class="btn" id="logCopy">📋 copy log</button>
+    <button class="btn" id="logClear" title="clear the log">✕</button>
+    <span id="logCount">0 rated</span>
+  </div>
+  <div id="scrolltest"><article id="article"></article></div>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   Procedural typographic ornaments — six species, one contract:
+     make(w, h, seed, { variant, sw, text, bg }) -> { paths, overlays, meta }
+       path    { d, sw, fill? }          stroke=currentColor unless fill
+       overlay { halo, over }            knot weave notches (halo = paper)
+   Everything is deterministic in (seed, box). Pure math, no DOM,
+   so the same block can be lifted into the docsify runtime as-is.
+   SITE NOTE: js/ornament.js is the live runtime (infra + species A,
+   extracted from the block below) — keep the two genCA copies in sync.
+   ===================================================================== */
+/*====GEN====*/
+const TAU = Math.PI * 2;
+const f2 = n => Math.round(n * 100) / 100;
+
+function fnv1a(str){ let h = 0x811c9dc5; for (let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); } return h >>> 0; }
+function mulberry32(a){ return function(){ a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const pick = (r, arr) => arr[Math.floor(r() * arr.length)];
+const rrange = (r, a, b) => a + r() * (b - a);
+const irange = (r, a, b) => Math.floor(rrange(r, a, b + 0.999));
+
+function dPts(pts, closed){
+  if (pts.length < 2) return '';
+  let d = `M${f2(pts[0][0])} ${f2(pts[0][1])}`;
+  for (let i = 1; i < pts.length; i++) d += `L${f2(pts[i][0])} ${f2(pts[i][1])}`;
+  return closed ? d + 'Z' : d;
+}
+function chaikin(pts, it, closed){
+  let p = pts;
+  for (let k = 0; k < it; k++){
+    const n = p.length, q = [];
+    if (!closed) q.push(p[0]);
+    const step = closed ? n : n - 1;
+    for (let i = 0; i < step; i++){
+      const a = p[i], b = p[(i + 1) % n];
+      q.push([a[0] * .75 + b[0] * .25, a[1] * .75 + b[1] * .25]);
+      q.push([a[0] * .25 + b[0] * .75, a[1] * .25 + b[1] * .75]);
+    }
+    if (!closed) q.push(p[n - 1]);
+    p = q;
+  }
+  return p;
+}
+const keyOf = p => p[0].toFixed(1) + ',' + p[1].toFixed(1);
+// chain open segments [[a,b],...] into polylines; endpoints with equal keys
+// close. mirrorX makes junction tie-breaks mirror-invariant: candidates are
+// ordered by min(x, mirrorX−x), so a junction and its mirror make exactly
+// mirrored choices even when several segment ends share one bucket.
+function chainSegs(segs, mirrorX = Infinity){
+  const nkey = p => Math.round(p[0] * 10) * 4194304 + Math.round(p[1] * 10);
+  const farKey = c => {
+    const p = segs[c.i][c.end ? 0 : 1];
+    return [Math.min(p[0], mirrorX - p[0]), p[1]];
+  };
+  const map = new Map();
+  segs.forEach((s, i) => { for (const end of [0, 1]) { const k = nkey(s[end]); if (!map.has(k)) map.set(k, []); map.get(k).push({ i, end }); } });
+  const used = new Array(segs.length).fill(false);
+  const out = [];
+  for (let i = 0; i < segs.length; i++){
+    if (used[i]) continue;
+    used[i] = true;
+    const line = [segs[i][0], segs[i][1]];
+    const k0 = nkey(line[0]);
+    let guard = segs.length + 2;
+    let closed = false;
+    while (guard--){
+      const k = nkey(line[line.length - 1]);
+      let cands = (map.get(k) || []).filter(c => !used[c.i]);
+      if (!cands.length) break;
+      if (cands.length > 1)
+        cands.sort((A, B) => {
+          const a = farKey(A), b = farKey(B);
+          return a[0] - b[0] || a[1] - b[1];
+        });
+      const c = cands[0];
+      used[c.i] = true;
+      const nxt = segs[c.i][c.end ? 0 : 1];
+      if (nkey(nxt) === k0) { closed = true; break; }
+      line.push(nxt);
+    }
+    out.push({ pts: line, closed });
+  }
+  return out;
+}
+
+/* ---------- shared craft layer -------------------------------------- */
+/* optical weight: strokes belong to the format, not to a global setting */
+const ornBody = (w, h) => Math.max(0.6, Math.min(2.0, Math.min(w, h) / 140));
+function circleD(cx, cy, rr){
+  return `M${f2(cx - rr)} ${f2(cy)}a${f2(rr)} ${f2(rr)} 0 1 0 ${f2(2 * rr)} 0a${f2(rr)} ${f2(rr)} 0 1 0 ${f2(-2 * rr)} 0Z`;
+}
+/* coin rim + pip: every medallion device gets the same frame language */
+function ornFrame(paths, w, h, body){
+  const Rf = Math.min(w, h) / 2 - 3;
+  paths.push({ d: circleD(w / 2, h / 2, Rf), sw: body * 1.45 });
+  paths.push({ d: circleD(w / 2, h / 2, Rf - 3.4), sw: body * 0.5 });
+  paths.push({ d: circleD(w / 2, h / 2, 1.9 * body), sw: 0, fill: true });
+  return Rf - 7.5;
+}
+/* Catmull-Rom through the points — interpolating (crossings stay sharp),
+   damped (k<1) so uneven spacing does not wobble */
+function crSample(pts, closed, k = 0.85, per = 3){
+  const n = pts.length, out = [];
+  if (n < 3) return pts.slice();
+  const idx = i => closed ? (i + n) % n : Math.max(0, Math.min(n - 1, i));
+  const segs = closed ? n : n - 1;
+  for (let i = 0; i < segs; i++){
+    const p0 = pts[idx(i - 1)], p1 = pts[idx(i)], p2 = pts[idx(i + 1)], p3 = pts[idx(i + 2)];
+    const c1x = p1[0] + (p2[0] - p0[0]) * k / 6, c1y = p1[1] + (p2[1] - p0[1]) * k / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) * k / 6, c2y = p2[1] - (p3[1] - p1[1]) * k / 6;
+    for (let j = 0; j < per; j++){
+      const t = j / per, u = 1 - t, t2 = t * t, t3 = t2 * t;
+      out.push([u*u*u*p1[0] + 3*u*u*t*c1x + 3*u*t*t*c2x + t3*p2[0],
+                u*u*u*p1[1] + 3*u*u*t*c1y + 3*u*t*t*c2y + t3*p2[1]]);
+    }
+  }
+  if (!closed) out.push(pts[n - 1].slice());
+  return out;
+}
+
+/* ------------------------------------------------------------------ */
+/* A · CA frame — a Wolfram automaton, sliced.                          */
+/* Any elementary rule 0–255 (hashed from the seed); symmetry comes    */
+/* from folded column sampling, not rule isotropy, so chaotic rules    */
+/* work too. Depth z morphs the SEED ROW through a smooth trig family  */
+/* — cells flip in place, the automaton amplifies them, the lace       */
+/* restructures. frame: band on all four sides; bands: top & bottom.   */
+/* All lines close with standoff from the text and the frame edge.     */
+/* ------------------------------------------------------------------ */
+function genCA(w, h, seed, o){
+  const r = mulberry32((seed ^ 0xA17CA) >>> 0);
+  const bands = o.variant === 'bands';
+  const z = +o.z || 0;
+  const paths = [];
+
+  // the hole = the text block (caller may pass measured bounds; pieces with
+  // the hole OUTSIDE the box — rails and bands — are clamped in, so their
+  // band thickness reads as the far side)
+  let inner = o.inner || (bands
+    ? { x0: 0, y0: h * 0.36, x1: w, y1: h * 0.64 }
+    : { x0: w * 0.235, y0: h * 0.26, x1: w * 0.765, y1: h * 0.74 });
+  // ---- padding: the borders THEMSELVES, never a field suppression -------
+  // padInner grows the text hole; padOuter pulls the frame in. The ornament
+  // then fills the padded region as ONE surface — no moats, no windows, no
+  // chopped lace; the small standoff window below only closes line ends.
+  // A pad is one px number, or {l,r,t,b} (long names left/right/top/bottom
+  // read too; sides missing from an object default to 0).
+  const padSides = v => {
+    if (v == null) return { l: 0, r: 0, t: 0, b: 0 };
+    if (typeof v === 'object'){
+      const g = (a, b) => Math.max(0, v[a] != null ? +v[a] : v[b] != null ? +v[b] : 0);
+      return { l: g('l', 'left'), r: g('r', 'right'), t: g('t', 'top'), b: g('b', 'bottom') };
+    }
+    const n = Math.max(0, +v || 0);
+    return { l: n, r: n, t: n, b: n };
+  };
+  const pinS = padSides(o.padInner);
+  const poutS = padSides(o.padOuter);
+  const ox = poutS.l, oy = poutS.t;
+  if (ox || oy || poutS.r || poutS.b || pinS.l || pinS.r || pinS.t || pinS.b){
+    w = Math.max(20, w - poutS.l - poutS.r);
+    h = Math.max(20, h - poutS.t - poutS.b);
+    inner = { x0: inner.x0 - pinS.l - ox, x1: inner.x1 + pinS.r - ox,
+              y0: inner.y0 - pinS.t - oy, y1: inner.y1 + pinS.b - oy };
+  }
+  const fmtPad = s => s.l === s.r && s.r === s.t && s.t === s.b ? `${Math.round(s.l)}` : `${Math.round(s.l)}|${Math.round(s.r)}|${Math.round(s.t)}|${Math.round(s.b)}`;
+  const padTag = (pinS.l || pinS.r || pinS.t || pinS.b || poutS.l || poutS.r || poutS.t || poutS.b)
+    ? ` · pad I${fmtPad(pinS)}·O${fmtPad(poutS)}` : '';
+  const cx0 = Math.min(Math.max(inner.x0, 0), w);
+  const cx1 = Math.min(Math.max(inner.x1, 0), w);
+  const cy0 = Math.min(Math.max(inner.y0, 0), h);
+  const cy1 = Math.min(Math.max(inner.y1, 0), h);
+  const strip = Math.max(cx0, w - cx1, cy0, h - cy1);
+  if (strip < 10) return { paths: [], meta: 'no room for a frame' };
+  const margin = o.standoff != null
+    ? Math.max(2, Math.min(o.standoff, strip * 0.45))
+    : Math.max(4.5, strip * 0.3);
+
+  const cell = o.detail != null
+    ? Math.max(2.4, Math.min(10, o.detail))
+    : Math.max(4, Math.min(10, strip / 3.4));
+  const nx = Math.floor(w / cell) + 2, ny = Math.floor(h / cell) + 2;
+  const gx = i => Math.min(w, i * (w / (nx - 1))), gy = j => Math.min(h, j * (h / (ny - 1)));
+
+  // ---- the field IS a cellular automaton (Wolfram rule on a cylinder) ----
+  // z does NOT advance the generation window — that would merely pan the
+  // texture in y (generation g+1 is the same picture one row up). Instead z
+  // morphs the SEED ROW through a smooth mirrored trigonometric family:
+  // cells flip in place, the automaton amplifies the perturbation, and the
+  // lace restructures — a genuine slice, never a translation.
+  // any of the 256 elementary rules — no curation. Symmetry comes from
+  // FOLDED SAMPLING (columns read through min(k, n−1−k)), not from rule
+  // isotropy, so chaotic rules like 30 work in the frame too.
+  const rule = o.rule != null ? (Math.round(o.rule) & 255) : Math.floor(r() * 256);
+  const dens = o.dens != null ? o.dens : rrange(r, 0.3, 0.5);
+  const rate = o.rate != null ? o.rate : rrange(r, 0.25, 0.6);
+  // line style: 0 raw geometric (no blur, straight segments, sharp corners)
+  //             1 crisp (no blur, smoothed curves)
+  //             2 soft (one blur pass)   3 organic (two blur passes)
+  const organic = o.organic != null ? Math.max(0, Math.min(3, Math.round(o.organic))) : 3;
+  const p = z * rate;                      // pattern phase — continuous
+  const rbit = (l, c, rr2) => (rule >> ((l << 2) | (c << 1) | rr2)) & 1;
+  // ring geometry, needed early: the seed row's length IS the ring
+  const sym = o.sym || 'v';
+  const hw = (cx1 - cx0) / 2, hh = (cy1 - cy0) / 2, midX = (cx0 + cx1) / 2, midY = (cy0 + cy1) / 2;
+  const symMul = sym === 'both' ? 1 : sym === 'none' ? 4 : 2;
+  // the row covers the TEXT ring's folded span (symMul quarter-arcs)
+  const ringN = Math.max(24, Math.round((symMul * (hw + hh)) / cell) + 1);
+  // ---- procedural seed rows ------------------------------------------
+  // the seed row (the automaton's initial condition, and the ornament's
+  // macro structure — rule-independent) is synthesized by a PROCEDURE the
+  // genome picks from a small library: harm (the original sinusoid sum),
+  // fm, square, chirp, noise, walk, pulse. Every procedure obeys the same
+  // wavelength discipline — carriers 260–900 px, texture down to ~3.5
+  // cells — so no genome can regrow page-sized lobes (the old whirl: the
+  // fixed 1–4 low carriers were page-sized on site rings). u ∈ [0,1] is
+  // the mirrored ring coordinate; procedures see only u, so the row stays
+  // mirror-symmetric and wrap-continuous by construction. Pin via
+  // o.seedProc; null rolls one per genome.
+  const cycPx = ringN * cell;                    // ring circumference in px
+  const wl = (a, b) => cycPx / rrange(r, a, b);  // wavelength px → cycles
+  const PROCS = ['harm', 'fm', 'square', 'chirp', 'noise', 'walk', 'pulse'];
+  const proc = PROCS.includes(o.seedProc) ? o.seedProc : pick(r, PROCS);
+  const ihash = (a, b) => { let x = Math.imul(a ^ 0x9E3779B9, 0x85EBCA6B) ^ Math.imul(b + 0x6D2B79F5, 0xC2B2AE35); x = Math.imul(x ^ (x >>> 15), 0x27D4EB2F); return ((x ^ (x >>> 13)) >>> 0) / 4294967296; };
+  const sstep01 = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+  // periodic value noise, 4 octaves, seeded; slides with pp so z drifts it
+  const vnoise = (seed) => {
+    const f0 = wl(500, 900), f1 = wl(120, 300), f2 = wl(30, 90), f3 = wl(3.5 * cell, 24);
+    const dr = rrange(r, 0.05, 0.3) * (r() < 0.5 ? 1 : -1);
+    return (u, pp) => {
+      let v = 0, amp = 0.55;
+      for (const f of [f0, f1, f2, f3]){
+        const m = Math.max(2, Math.round(f));
+        const x = (((u + pp * dr) % 1 + 1) % 1) * m, i = Math.floor(x) % m, t = sstep01(x - Math.floor(x));
+        const a = ihash(seed + i * 7349 + m, m), b = ihash(seed + ((i + 1) % m) * 7349 + m, m);
+        v += amp * (2 * ((1 - t) * a + t * b) - 1);
+        amp *= 0.62;
+      }
+      return v / 1.6;
+    };
+  };
+  let rowEval;
+  if (proc === 'noise'){
+    rowEval = vnoise((r() * 1e9) | 0);
+  } else if (proc === 'walk'){
+    const kn = Math.max(3, Math.round(wl(60, 160))), vs = [], vs2 = [];
+    for (let k = 0; k <= kn; k++){ vs.push(rrange(r, -1, 1)); vs2.push(rrange(r, -1, 1)); }
+    const fine = vnoise((r() * 1e9) | 0);
+    rowEval = (u, pp) => {
+      const x = u * kn, i = Math.floor(x), t = sstep01(x - i);
+      const w = vs[i] * (1 - t) + vs[Math.min(kn, i + 1)] * t;
+      const w2 = vs2[i] * (1 - t) + vs2[Math.min(kn, i + 1)] * t;
+      return 0.75 * (w * (0.5 - 0.5 * Math.sin(pp)) + w2 * (0.5 + 0.5 * Math.sin(pp))) + 0.25 * fine(u, pp);
+    };
+  } else if (proc === 'pulse'){
+    const kn = Math.max(4, Math.round(wl(40, 120))), pk = [];
+    for (let k = 0; k < kn; k++) pk.push({ v: r() < 0.5 ? -1 : 1, w: rrange(r, 0.2, 0.8) });
+    const dr = rrange(r, 0.05, 0.25);
+    rowEval = (u, pp) => {
+      const x = (((u + pp * dr) % 1 + 1) % 1) * kn, i = Math.floor(x) % kn, t = x - Math.floor(x);
+      const a = pk[i], b = pk[(i + 1) % kn];
+      const gate = sstep01((t - (1 - b.w)) / b.w);   // plateau, then transition
+      return a.v * (1 - gate) + b.v * gate;
+    };
+  } else if (proc === 'fm'){
+    const ac = wl(260, 900), m1 = wl(3.5 * cell, 60), m2 = wl(30, 200);
+    const i1 = rrange(r, 0.5, 3), i2 = rrange(r, 0.3, 2), ph = r() * TAU, az = rrange(r, 0.3, 1.2);
+    rowEval = (u, pp) => 0.9 * Math.sin(Math.PI * ac * u + i1 * Math.sin(Math.PI * m1 * u + az * pp) + i2 * Math.sin(Math.PI * m2 * u + ph));
+  } else if (proc === 'square'){
+    const f0 = wl(260, 900), nh = irange(r, 2, 5), ph = r() * TAU, az = rrange(r, 0.3, 1.2);
+    rowEval = (u, pp) => { let s = 0, n = 0; for (let h = 1; h <= nh; h++){ const hh = 2 * h - 1; s += Math.sin(hh * (Math.PI * f0 * u + az * pp) + ph) / hh; n += 1 / hh; } return s / n; };
+  } else if (proc === 'chirp'){
+    const a0 = wl(600, 900), a1 = wl(260, 500), ph = r() * TAU, az = rrange(r, 0.3, 1.2);
+    const tx = wl(3.5 * cell, 60), tp = r() * TAU, ta = rrange(r, 0.1, 0.3);
+    rowEval = (u, pp) => 0.8 * Math.sin((a0 + (a1 - a0) * u) * Math.PI * u + az * pp + ph) + ta * Math.sin(Math.PI * tx * u + tp);
+  } else { // harm — the original sinusoid family
+    const fam = [];
+    const nF = 7 + Math.floor(r() * 5);
+    for (let k = 0; k < nF; k++){
+      const lo = k < 2;
+      fam.push({ ax: lo ? wl(260, 900) : wl(3.5 * cell, 260),
+                 az: rrange(r, 0.3, 1.2) * (r() < 0.5 ? 1 : -1), ph: r() * TAU,
+                 amp: lo ? rrange(r, 0.4, 0.8) : rrange(r, 0.5, 1) });
+    }
+    rowEval = (u, pp) => { let s = 0; for (const f of fam) s += f.amp * Math.sin(f.ax * Math.PI * u + f.az * pp + f.ph); return s / nF; };
+  }
+  const bias = (0.5 - dens) * 1.5;         // density slider biases the threshold
+  const seedRow = (pp, n) => {
+    const row = new Array(n);
+    for (let i = 0; i < n; i++){
+      const u = Math.min(i, n - 1 - i) / (n / 2);   // 0..1, mirrored
+      row[i] = rowEval(u, pp) > bias ? 1 : 0;
+    }
+    if (row.every(v => !v)){ row[n >> 1] = 1; if ((n & 1) === 0) row[(n >> 1) - 1] = 1; }  // on the fold axis
+    return row;
+  };
+  // the ornament radiates from the text: generation 0 is the ring around
+  // the hole, later generations live farther out — the automaton literally
+  // grows away from the words, and z morphs its seed in place.
+  // ONE cylinder: read around the ring at distance d from the text (below).
+  const runCA = (row0, rows) => {
+    let S = row0;
+    const out = [];
+    const n = row0.length;
+    for (let g = 0; g < rows; g++){
+      out.push(S);
+      const N = new Array(n);
+      for (let i = 0; i < n; i++) N[i] = rbit(S[(i - 1 + n) % n], S[i], S[(i + 1) % n]);
+      S = N;
+    }
+    return out;
+  };
+  // depth fold: generation = distance from the text ÷ cell. Frames much
+  // larger than their text (page voids) run past the young generations the
+  // lace lives in — out there elementary rules degenerate to flat or noise.
+  // Opt-in (o.depth): fold the index triangle-wave so deep frames repeat
+  // the young regime in concentric bands. Default Infinity = never folds,
+  // so default genomes are bit-identical to the original generator.
+  const depth = o.depth != null ? Math.max(8, Math.round(o.depth)) : Infinity;
+  const fold = g => { const m = g % (2 * depth); return m < depth ? m : 2 * depth - m; };
+  const gNeed = Math.min(Math.ceil(Math.hypot(w, h) / 2 / cell) + 2, depth + 2);
+  // ONE cylinder, read around the ring — L∞ (square) rings. The field is
+  // a single surface; a closed ring must wrap the cylinder somewhere, and
+  // the fold that hides the wrap is a MIRROR, settable via sym:
+  //   sym 'v'    left ≡ right (fold lines at top/bottom centres)  [default]
+  //   sym 'h'    top ≡ bottom (fold lines at the side-mids)
+  //   sym 'both' fourfold — every quadrant reads the same quarter
+  //   sym 'none' full texture, but the wrap shows as one seam at top-centre
+  // SQUARE rings matter: the earlier Euclidean rings parameterized each
+  // corner as an arc (position d·φ), which focuses at the hole's corners
+  // and swirls every texture into the same seed-independent WHIRL there.
+  // Square rings are piecewise linear in x and y — no singularity, no
+  // swirl — and the four quarter-arcs stay equal (c = hw + hh + 2d), so
+  // the folds keep their exact mirror behaviour.
+  const gens = runCA(seedRow(p, ringN), gNeed);
+  // Ring position = where the RAY from the text centre through (x, y)
+  // leaves the text rectangle. Constant-position curves are straight rays,
+  // so the automaton's structures stay put and grow radially away from the
+  // words. The old sArc measured arc length along each L∞ ring; its d-terms
+  // (2·d on the sides, 4·d at the bottom) slid the readout 2–4 cells around
+  // the ring every generation — a fixed square-swirl rail that every seed,
+  // rule and density was forced to wrap along. Rays kill the rail; texture
+  // magnifies projectively with distance from the text instead.
+  const footArc = (x, y) => {
+    const sx = x - midX, sy = y - midY;
+    const tx = hw / (Math.abs(sx) || 1e-9), ty = hh / (Math.abs(sy) || 1e-9);
+    const t = Math.min(tx, ty);
+    const fx = midX + t * sx, fy = midY + t * sy;   // ray's foot on the text rect
+    if (ty <= tx)                                   // leaves through top/bottom edge
+      return sy <= 0 ? fx - midX : 2 * (hw + hh) - (fx - midX);
+    return sx > 0 ? hw + (fy - cy0) : -(hw + (fy - cy0));
+  };
+  // folded arc position — folds sit on fixed rays, not ring diagonals
+  const foldAt = (x, y) => {
+    const c = hw + hh + 1e-9;                       // quarter-arc of the TEXT ring (constant)
+    const per = sym === 'both' ? 2 * c : 4 * c;     // texture repeat around the ring
+    const span = sym === 'both' ? c : sym === 'none' ? 4 * c : 2 * c;
+    let m = (sym === 'h' ? footArc(x, y) - c : footArc(x, y)) % per;
+    if (m < 0) m += per;
+    return m < span ? m : 2 * span - m;             // mirror fold ('none' = plain arc)
+  };
+  let V = [];
+  for (let j = 0; j < ny; j++){
+    const y = gy(j);
+    const row = new Array(nx);
+    for (let i = 0; i < nx; i++){
+      const x = gx(i);
+      const kk = Math.min(ringN - 1, Math.round(foldAt(x, y) / cell));
+      const dx = Math.max(inner.x0 - x, 0, x - inner.x1);
+      const dy = Math.max(inner.y0 - y, 0, y - inner.y1);
+      const gen = fold(Math.round(Math.max(dx, dy) / cell));
+      row[i] = gens[Math.min(gen, gNeed - 1)][((kk % ringN) + ringN) % ringN] - 0.5;
+    }
+    V.push(row);
+  }
+  // separable [1 2 1] blur: binary states become engraved lines. Zero passes
+  // keeps the raw geometric contour — the character of the original CA lace.
+  const blurPasses = [0, 0, 1, 2][organic];
+  for (let pass = 0; pass < blurPasses; pass++){
+    const H = V.map(row => row.map((v, i) => (row[Math.max(0, i - 1)] + 2 * v + row[Math.min(nx - 1, i + 1)]) / 4));
+    V = [];
+    for (let j = 0; j < ny; j++){
+      const a = H[Math.max(0, j - 1)], b = H[j], c = H[Math.min(ny - 1, j + 1)];
+      V.push(b.map((v, i) => (a[i] + 2 * v + c[i]) / 4));
+    }
+  }
+
+
+  // window: force the field below the isolevel near every boundary, so all
+  // contours close inside the strip with a clean standoff — nothing touches
+  // the text, nothing touches the frame, no dangling ends, ever. Spacing is
+  // NOT done here (see padding above); this only seals the edges.
+  const smoo = t => t >= 1 ? 1 : t * t * (3 - 2 * t);
+  const dIn = (x, y) => {
+    const dx = Math.max(inner.x0 - x, 0, x - inner.x1);
+    const dy = Math.max(inner.y0 - y, 0, y - inner.y1);
+    return Math.hypot(dx, dy);
+  };
+  const G = [];
+  // isolevel sits at +0.03, not 0: the blur's discrete arithmetic produces
+  // exact zeros often, and a zero node puts crossings exactly ON the node —
+  // several edges then share one chain key, spawning degenerate segments
+  // and asymmetric pairing. Off the node, every crossing is its own point.
+  const LEVEL = 0.03;
+  for (let j = 0; j < ny; j++){
+    const row = [];
+    for (let i = 0; i < nx; i++){
+      const x = gx(i), y = gy(j);
+      const win = Math.min(smoo(Math.min(x, y, w - x, h - y) / margin), smoo(dIn(x, y) / margin));
+      row.push((win >= 1 ? V[j][i] : V[j][i] - (1 - win) * 0.9) - LEVEL);
+    }
+    G.push(row);
+  }
+
+  // canonical edge crossings: each grid edge's crossing is computed exactly
+  // once (mirrored cells then share the literal same point — no float-order
+  // drift, no chain-pairing divergence between the two sides of the frame)
+  const hE = [], vE = [];
+  for (let j = 0; j < ny; j++){ hE.push(new Array(nx).fill(null)); if (j < ny - 1) vE.push(new Array(nx).fill(null)); }
+  for (let j = 0; j < ny; j++)
+    for (let i = 0; i < nx; i++){
+      const a = G[j][i];
+      if (i < nx - 1){
+        const b = G[j][i + 1];
+        if ((a > 0) !== (b > 0)){ const t = a / (a - b); hE[j][i] = [gx(i) + (gx(i + 1) - gx(i)) * t, gy(j)]; }
+      }
+      if (j < ny - 1){
+        const d = G[j + 1][i];
+        if ((a > 0) !== (d > 0)){ const t = a / (a - d); vE[j][i] = [gx(i), gy(j) + (gy(j + 1) - gy(j)) * t]; }
+      }
+    }
+  // marching squares at 0; saddles by centre value
+  const segs = [];
+  for (let j = 0; j < ny - 1; j++)
+    for (let i = 0; i < nx - 1; i++){
+      const a = G[j][i], b = G[j][i + 1], c = G[j + 1][i + 1], d = G[j + 1][i];
+      const idx = (a > 0 ? 1 : 0) | (b > 0 ? 2 : 0) | (c > 0 ? 4 : 0) | (d > 0 ? 8 : 0);
+      if (idx === 0 || idx === 15) continue;
+      const T = hE[j][i], R = vE[j][i + 1], B = hE[j + 1][i], L = vE[j][i];
+      const cv = (a + b + c + d) / 4;
+      let pr;
+      switch (idx){
+        case 1: case 14: pr = [[L, T]]; break;
+        case 2: case 13: pr = [[T, R]]; break;
+        case 3: case 12: pr = [[L, R]]; break;
+        case 4: case 11: pr = [[R, B]]; break;
+        case 6: case 9:  pr = [[T, B]]; break;
+        case 7: case 8:  pr = [[L, B]]; break;
+        case 5:  pr = cv > 0 ? [[L, T], [R, B]] : [[T, R], [L, B]]; break;
+        case 10: pr = cv > 0 ? [[T, R], [L, B]] : [[L, T], [R, B]]; break;
+      }
+      for (const [e1, e2] of pr) segs.push([e1, e2]);
+    }
+
+  // craft: drop lint, cap the count, weight by scale — all by THRESHOLDS
+  // (never by rank: mirror twins have equal length and must share a tier)
+  let lines = chainSegs(segs, w);
+  // internal quality gates: drop sub-cellular lint (minlen × cell), cap the
+  // count when asked (0 / null = unlimited). Lengths are quantised BEFORE
+  // any comparison: mirror twins are equal only to float precision, and a
+  // 1e-12 straddle across a threshold would drop one twin and keep the
+  // other — an instant one-sided loop on one side of the frame.
+  const qlen = L => Math.round((() => { let s = 0; for (let i = 1; i < L.pts.length; i++) s += Math.hypot(L.pts[i][0] - L.pts[i-1][0], L.pts[i][1] - L.pts[i-1][1]); return s; })() * 8) / 8;
+  const minLenPx = cell * (o.minlen != null ? o.minlen : 2.2);
+  lines = lines.filter(L => qlen(L) > minLenPx && L.pts.length > 3);
+  if (!lines.length) return { paths, meta: `rule ${rule} · seed ${proc} · phase ${p.toFixed(2)} · resting at this depth` };
+  const lens = lines.map(qlen);
+  const sorted = [...lens].sort((a, b) => b - a);
+  // twin-safe ceiling: admit whole groups of equal length (mirror twins
+  // share a length), stop before a group would overflow the budget;
+  // maxlines 0 or null keeps every contour
+  const capN = o.maxlines != null ? o.maxlines : 40;
+  let keep = sorted.length;
+  if (capN > 0){
+    keep = 0;
+    for (let i = 0; i < sorted.length; ){
+      let j = i;
+      while (j < sorted.length && Math.abs(sorted[j] - sorted[i]) < 1e-9) j++;
+      if (keep > 0 && keep + (j - i) > capN) break;
+      keep += j - i;
+      i = j;
+    }
+  }
+  const capLen = keep > 0 ? sorted[keep - 1] - 1e-9 : -1;
+  const medLen = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.62))] || 0;
+  // stroke: absolute px when given (site SETTINGS), else the scale-derived
+  // default × optional multiplier; hair = the short-line tier ratio
+  const body = o.weight != null
+    ? Math.max(0.2, +o.weight)
+    : Math.max(0.7, Math.min(1.5, strip * 0.05)) * (o.bodyW != null ? o.bodyW : 1);
+  const hair = o.hair != null ? Math.max(0.2, Math.min(1, o.hair)) : 0.55;
+  const per = organic === 0
+    ? 0                                                     // raw: straight segments, sharp corners
+    : Math.max(2, Math.round(o.smooth != null ? o.smooth : (cell < 5 ? 4 : 3)));
+  lines.forEach((L, i) => {
+    if (lens[i] < capLen - 1e-9) return;
+    const sw = lens[i] >= medLen ? body : body * hair;   // figure / ground
+    const pts = ox || oy ? L.pts.map(p => [p[0] + ox, p[1] + oy]) : L.pts;   // undo the padding shift
+    paths.push({ d: per === 0 ? dPts(pts, L.closed) : dPts(crSample(pts, L.closed, 0.8, per), L.closed), sw });
+  });
+  return { paths, meta: `rule ${rule} · seed ${proc} · phase ${p.toFixed(2)} · ${paths.length} lines · strip ${strip.toFixed(0)}px · cell ${cell.toFixed(1)}${padTag}` };
+}
+
+/* ------------------------------------------------------------------ */
+/* B · WFC flourish — hex truchet, local collapse, volutes close ends  */
+/* ------------------------------------------------------------------ */
+function genWFC(w, h, seed, o){
+  const r = mulberry32(seed ^ 0x5FC1);
+  const SQ3 = Math.sqrt(3);
+  const paths = [];
+  const cells = new Map();
+  const disc = o.variant === 'roundel';
+  const ANG = [0, -Math.PI / 3, -2 * Math.PI / 3, Math.PI, 2 * Math.PI / 3, Math.PI / 3];
+  const EVEN = [[1,0],[0,-1],[-1,-1],[-1,0],[-1,1],[0,1]];
+  const ODD  = [[1,0],[1,-1],[0,-1],[-1,0],[0,1],[1,1]];
+
+  if (disc){
+    const R = Math.min(w, h) / 2 - 2;
+    const s = R / rrange(r, 3.6, 5.4);
+    const cx = w / 2, cy = h / 2;
+    const mI = Math.ceil(R / (1.5 * s)) + 1, mJ = Math.ceil(R / (SQ3 * s)) + 1;
+    for (let i = -mI; i <= mI; i++) for (let j = -mJ; j <= mJ; j++){
+      const x = cx + j * SQ3 * s + ((i & 1) ? SQ3 * s / 2 : 0);
+      const y = cy + i * 1.5 * s;
+      if (Math.hypot(x - cx, y - cy) <= R - s * 0.45) cells.set(i + ',' + j, { i, j, x, y, placed: false, uses: 0, strokes: null });
+    }
+  } else {
+    let s = Math.min(rrange(r, 18, 30), h / 3.6, w / 6);
+    s = Math.max(s, 10);
+    const dx = SQ3 * s, dy = 1.5 * s;
+    const m = Math.max(1, Math.floor((h - 2 * s) / dy) + 1);
+    const n = Math.max(2, Math.floor((w - SQ3 * s / 2) / dx));
+    const x0 = (w - ((n - 1) * dx + dx / 2)) / 2, y0 = (h - (m - 1) * dy) / 2;
+    for (let i = 0; i < m; i++) for (let j = 0; j < n; j++)
+      cells.set(i + ',' + j, { i, j, x: x0 + j * dx + ((i & 1) ? dx / 2 : 0), y: y0 + i * dy, placed: false, uses: 0, strokes: null });
+  }
+
+  function nbKey(c, e){
+    const d = ((c.i % 2 + 2) % 2 ? ODD : EVEN)[e];
+    const k = (c.i + d[0]) + ',' + (c.j + d[1]);
+    return cells.has(k) ? k : null;
+  }
+  const half = SQ3 * s_(cells);
+  function s_(map){ for (const c of map.values()){ // hex size from first two cells
+      const nb = map.get(c.i + ',' + (c.j + 1)); if (nb) return Math.hypot(nb.x - c.x, nb.y - c.y) / SQ3; }
+    return 24; }
+  const edgeMid = (c, e) => [c.x + Math.cos(ANG[e]) * half, c.y + Math.sin(ANG[e]) * half];
+
+  const order = [...cells.keys()];
+  for (let i = order.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+
+  for (const k of order){
+    const c = cells.get(k);
+    const forced = [], free = [];
+    let nAll = 0;
+    for (let e = 0; e < 6; e++){
+      const kk = nbKey(c, e); if (!kk) continue;
+      nAll++;
+      const nb = cells.get(kk);
+      if (nb.placed){ if (nb.uses & (1 << ((e + 3) % 6))) forced.push(e); }
+      else free.push(e);
+    }
+    const pUse = nAll === 6 ? 0.82 : 0.35;
+    const edges = forced.slice();
+    for (const e of free) if (r() < pUse) edges.push(e);
+    for (let i = edges.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [edges[i], edges[j]] = [edges[j], edges[i]]; }
+    const rest = edges.slice(), pairs = [], volutes = [];
+    while (rest.length){
+      const e = rest.pop();
+      let f = -1;
+      const opp = rest.indexOf((e + 3) % 6);
+      if (opp >= 0 && r() < 0.42) f = rest.splice(opp, 1)[0];
+      else for (const dd of [1, -1, 2, -2]){
+        const idx = rest.indexOf(((e + dd) % 6 + 6) % 6);
+        if (idx >= 0){ f = rest.splice(idx, 1)[0]; break; }
+      }
+      if (f < 0) volutes.push(e); else pairs.push([e, f]);
+    }
+    c.uses = 0; for (const e of edges) c.uses |= (1 << e);
+    c.strokes = { pairs, volutes };
+    c.placed = true;
+  }
+
+  for (const c of cells.values()){
+    if (!c.strokes) continue;
+    for (const [a, b] of c.strokes.pairs){
+      const mA = edgeMid(c, a), mB = edgeMid(c, b);
+      const la = Math.hypot(c.x - mA[0], c.y - mA[1]), lb = Math.hypot(c.x - mB[0], c.y - mB[1]);
+      const k = 0.45 * Math.hypot(mB[0] - mA[0], mB[1] - mA[1]);
+      const c1 = [mA[0] + (c.x - mA[0]) / la * k, mA[1] + (c.y - mA[1]) / la * k];
+      const c2 = [mB[0] + (c.x - mB[0]) / lb * k, mB[1] + (c.y - mB[1]) / lb * k];
+      paths.push({ d: `M${f2(mA[0])} ${f2(mA[1])}C${f2(c1[0])} ${f2(c1[1])} ${f2(c2[0])} ${f2(c2[1])} ${f2(mB[0])} ${f2(mB[1])}`, sw: o.sw });
+    }
+    for (const e of c.strokes.volutes){
+      const m = edgeMid(c, e);
+      const nx = (c.x - m[0]) / half, ny = (c.y - m[1]) / half;
+      const vR = half * 1.05 * rrange(r, 0.55, 0.75), turns = rrange(r, 1.9, 3.0), dir = r() < 0.5 ? 1 : -1;
+      const cc = [m[0] + nx * vR, m[1] + ny * vR];
+      const th0 = Math.atan2(m[1] - cc[1], m[0] - cc[0]);
+      const pts = [];
+      for (let i = 0; i <= 42; i++){
+        const t = i / 42, th = th0 + dir * turns * TAU * t, rad = vR * (1 - 0.93 * t) + half * 0.06;
+        pts.push([cc[0] + Math.cos(th) * rad, cc[1] + Math.sin(th) * rad]);
+      }
+      paths.push({ d: dPts(chaikin(pts, 1, false), false), sw: o.sw });
+    }
+  }
+  return { paths, meta: `${cells.size} cells collapsed` };
+}
+
+/* ------------------------------------------------------------------ */
+/* C · Knot weave — cross/turn tiles, chained strands, rim reflexes    */
+/* medal: dihedral weave inside the coin frame, uniform body stroke    */
+/* divider: woven between a hairline rule pair, spindle-weighted       */
+/* ------------------------------------------------------------------ */
+function genKnot(w, h, seed, o){
+  const r = mulberry32((seed ^ 0x4071) >>> 0);
+  const divider = o.variant === 'divider';
+  const body = ornBody(w, h);
+  const pCross = rrange(r, 0.6, 0.82);   // share of crossing tiles — the weave
+  const paths = [], overlays = [];
+  let M, C, P, bitAt, slashAt, env = null;
+
+  if (!divider){
+    const R = ornFrame(paths, w, h, body);   // frame rings + pip, shared language
+    const k = pick(r, [3, 4, 5, 6, 8]);
+    const q = Math.max(3, Math.round(rrange(r, 4, 8)));
+    C = 2 * k * q;
+    M = Math.round(rrange(r, 3, 6));
+    const rin = R * rrange(r, 0.3, 0.45);
+    const ch = (R - rin) / M;
+    P = (t, c) => { const cm = ((c % C) + C) % C; const rad = rin + t * ch; const a = cm / C * TAU - Math.PI / 2; return [w / 2 + Math.cos(a) * rad, h / 2 + Math.sin(a) * rad]; };
+    const per = C / k;
+    const fold = c => { const a = ((c % per) + per) % per; return Math.min(a, per - a); };
+    const bitF = [], slashF = [];
+    for (let t = 0; t < M; t++){ bitF.push(Array.from({ length: q + 1 }, () => r() < pCross ? 1 : 0)); slashF.push(Array.from({ length: q + 1 }, () => r() < .5 ? 1 : 0)); }
+    bitAt = (t, c) => bitF[t][fold(c)]; slashAt = (t, c) => slashF[t][fold(c)];
+  } else {
+    // woven divider between rules; spindle envelope tapers the stroke
+    paths.push({ d: `M12 2.5L${f2(w - 12)} 2.5`, sw: body * 0.5 });
+    paths.push({ d: `M12 ${f2(h - 2.5)}L${f2(w - 12)} ${f2(h - 2.5)}`, sw: body * 0.5 });
+    const cell = rrange(r, 18, 26);
+    C = Math.max(6, Math.round(w / cell));
+    const span = (h - 22) * 0.78;
+    M = Math.max(2, Math.round(span / cell));
+    const ch = span / M, y0 = 2.5 + (h - 5 - span) / 2, cw = w / C;
+    P = (t, c) => { const cm = ((c % C) + C) % C; return [cm * cw, y0 + t * ch]; };
+    const bs = [], ss = [];
+    for (let t = 0; t < M; t++){ bs.push(Array.from({ length: C }, () => r() < pCross ? 1 : 0)); ss.push(Array.from({ length: C }, () => r() < .5 ? 1 : 0)); }
+    bitAt = (t, c) => bs[t][((c % C) + C) % C]; slashAt = (t, c) => ss[t][((c % C) + C) % C];
+    env = x => body * (0.45 + 0.55 * Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, x / w))), 0.65));
+  }
+
+  const bez = (p0, p1, p2, p3, n) => { const out = []; for (let i = 0; i <= n; i++){ const t = i / n, u = 1 - t;
+    out.push([u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0], u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1]]); } return out; };
+  const arc = (mA, corner, mB) => { const k = 0.55;
+    return bez(mA, [mA[0]+(corner[0]-mA[0])*k, mA[1]+(corner[1]-mA[1])*k], [mB[0]+(corner[0]-mB[0])*k, mB[1]+(corner[1]-mB[1])*k], mB, 4); };
+
+  // pieces: knot tiles + rim bows; all endpoints are shared side midpoints
+  // tile kinds: X = cross (two strands cross at the cell centre, over/under by
+  // (t+c) parity → the weave alternates along straight runs), A/B = turns
+  const pieces = [];
+  const xCells = new Map();
+  for (let t = 0; t < M; t++)
+    for (let c = 0; c < C; c++){
+      const N = P(t, c + .5), S = P(t + 1, c + .5), W = P(t + .5, c), E = P(t + .5, c + 1);
+      const kind = bitAt(t, c) ? 'X' : (slashAt(t, c) ? 'A' : 'B');
+      if (kind === 'X'){
+        const C = P(t + .5, c + .5);
+        const dyN = S[1] - N[1], dxW = E[0] - W[0];
+        pieces.push({ pts: bez(N, [N[0], N[1] + dyN * .3], [C[0], C[1] - dyN * .38], C, 4)
+                            .concat(bez(C, [C[0], C[1] + dyN * .38], [S[0], S[1] - dyN * .3], S, 4)), cell: [t, c] });
+        pieces.push({ pts: bez(W, [W[0] + dxW * .3, W[1]], [C[0] - dxW * .38, C[1]], C, 4)
+                            .concat(bez(C, [C[0] + dxW * .38, C[1]], [E[0] - dxW * .3, E[1]], E, 4)), cell: [t, c] });
+        xCells.set(t + ',' + c, [pieces.length - 2, pieces.length - 1]);
+      } else if (kind === 'A'){
+        pieces.push({ pts: arc(N, P(t, c), W), cell: [t, c] });
+        pieces.push({ pts: arc(S, P(t + 1, c + 1), E), cell: [t, c] });
+      } else {
+        pieces.push({ pts: arc(N, P(t, c + 1), E), cell: [t, c] });
+        pieces.push({ pts: arc(S, P(t + 1, c), W), cell: [t, c] });
+      }
+    }
+  for (let c = 0; c < C; c++){
+    pieces.push({ pts: arc(P(0, c + .5), P(-0.38, c + 1), P(0, c + 1.5)), rim: true });
+    pieces.push({ pts: arc(P(M, c + .5), P(M + 0.38, c + 1), P(M, c + 1.5)), rim: true });
+  }
+
+  // chain into closed strands
+  const map = new Map();
+  pieces.forEach((p, i) => { for (const e of [0, 1]){ const kk = keyOf(p.pts[e === 0 ? 0 : p.pts.length - 1]); if (!map.has(kk)) map.set(kk, []); map.get(kk).push({ i, e }); } });
+  const used = new Array(pieces.length).fill(false);
+  const strands = [];
+  const pieceStrand = new Array(pieces.length).fill(-1);
+  for (let i = 0; i < pieces.length; i++){
+    if (used[i]) continue;
+    used[i] = true;
+    const pts = pieces[i].pts.slice();
+    const chainIdx = [i];
+    let guard = pieces.length + 2;
+    let closed = false;
+    while (guard--){
+      const kk = keyOf(pts[pts.length - 1]);
+      const cands = (map.get(kk) || []).filter(x => !used[x.i]);
+      if (!cands.length) break;
+      const c = cands[0];
+      used[c.i] = true;
+      const add = pieces[c.i].pts.slice();
+      if (c.e === 1) add.reverse();   // matched piece-end B → walk B…A
+      // drop duplicate joint point
+      if (keyOf(add[0]) === kk) add.shift();
+      pts.push(...add);
+      chainIdx.push(c.i);
+      if (keyOf(pts[pts.length - 1]) === keyOf(pts[0])) { closed = true; break; }
+    }
+    if (closed) pts.pop();
+    strands.push(pts);   // pieces are G1 at joints by construction; no re-smoothing
+    const si = strands.length - 1;
+    for (const pi of chainIdx) pieceStrand[pi] = si;
+  }
+
+  if (!divider){
+    for (const s of strands) paths.push({ d: dPts(s, true), sw: body });
+  } else {
+    // spindle: strand runs bucketed by local (quantised) stroke weight
+    const buckets = new Map();
+    const flush = (qq, run) => { if (run.length > 1){ const key = f2(qq); buckets.set(key, (buckets.get(key) || '') + dPts(run, false)); } };
+    for (const s of strands){
+      let curQ = null, run = [];
+      for (const p of s){
+        const qq = Math.round(env(p[0]) * 5) / 5;
+        if (qq !== curQ){ flush(curQ, run); curQ = qq; run = []; }
+        run.push(p);
+      }
+      flush(curQ, run);
+    }
+    for (const [key, d] of buckets) paths.push({ d, sw: +key });
+  }
+
+  // crossings live at the centre of every X cell; we know the two pieces
+  // (and hence the two strands) involved — no global search needed
+  const near = (s, p) => { let bi = 0, bd = 1e9; for (let i = 0; i < s.length; i++){ const d = (s[i][0]-p[0])**2 + (s[i][1]-p[1])**2; if (d < bd){ bd = d; bi = i; } } return { i: bi, d: Math.sqrt(bd) }; };
+  const tangent = (s, i) => { const a = s[(i - 1 + s.length) % s.length], b = s[(i + 1) % s.length]; return [b[0] - a[0], b[1] - a[1]]; };
+  const cut = (s, i, d) => { const out = [s[i]];
+    for (let k = 1; k <= s.length && out.length < 26; k++){ const j = (i + k) % s.length; if (Math.hypot(s[j][0]-s[i][0], s[j][1]-s[i][1]) > d) break; out.push(s[j]); }
+    for (let k = 1; k <= s.length && out.length < 52; k++){ const j = (i - k + s.length * 2) % s.length; if (Math.hypot(s[j][0]-s[i][0], s[j][1]-s[i][1]) > d) break; out.unshift(s[j]); }
+    return out; };
+  for (const [key, [pa, pb]] of xCells){
+    const [t, c] = key.split(',').map(Number);
+    const pc = P(t + .5, c + .5);
+    const sA = pieceStrand[pa], sB = pieceStrand[pb];
+    if (sA < 0 || sB < 0) continue;
+    const nA = near(strands[sA], pc);
+    if (nA.d > 9) continue;
+    const vA = { si: sA, i: nA.i, d: nA.d };
+    let vB = null;
+    if (sA === sB){
+      // the strand crosses itself: locate the second pass
+      const s = strands[sA];
+      for (let i = 0; i < s.length; i++){
+        const d = Math.hypot(s[i][0]-pc[0], s[i][1]-pc[1]);
+        if (d < 9 && Math.abs(i - nA.i) > 10 && Math.abs(i - nA.i) < s.length - 10)
+          if (!vB || d < vB.d) vB = { si: sB, i, d };
+      }
+    } else {
+      const nB = near(strands[sB], pc);
+      if (nB.d <= 9) vB = { si: sB, i: nB.i, d: nB.d };
+    }
+    if (!vB) continue;
+    const tA = tangent(strands[vA.si], vA.i), tB = tangent(strands[vB.si], vB.i);
+    const dot = Math.abs((tA[0] * tB[0] + tA[1] * tB[1]) / ((Math.hypot(...tA) * Math.hypot(...tB)) || 1));
+    if (dot > 0.6) continue;                     // not a transversal crossing
+    const nsA = Math.abs(tA[1]) > Math.abs(tA[0]); // vertical-ish = the N–S strand
+    const nsB = Math.abs(tB[1]) > Math.abs(tB[0]);
+    if (nsA === nsB) continue;
+    const overIsA = nsA === (((t + c) & 1) === 0); // parity → alternating weave
+    const over = overIsA ? vA : vB, under = overIsA ? vB : vA;
+    const swLoc = divider ? env(pc[0]) : body;
+    const delta = Math.max(2.6 * swLoc, 3);
+    const haloD = dPts(cut(strands[under.si], under.i, delta), false);
+    const overD = dPts(cut(strands[over.si], over.i, delta), false);
+    if (haloD && overD) overlays.push({ halo: haloD, over: overD, sw: swLoc });
+  }
+  return { paths, overlays, meta: `${divider ? 'divider' : 'medal'} · ${C}×${M} · ${strands.length} strands` };
+}
+
+/* ------------------------------------------------------------------ */
+/* D · Guilloché — near-commensurate beats, exact closure             */
+/* ------------------------------------------------------------------ */
+function genGuil(w, h, seed, o){
+  const r = mulberry32(seed ^ 0x61D0);
+  const paths = [];
+  if (o.variant === 'rosette'){
+    const R = Math.min(w, h) / 2 - 3;
+    const rings = [[1, 1.4], [0.72, 1.0], [0.44, 0.65]];
+    for (const [rs, wsm] of rings){
+      const k = irange(r, 3, 9), l = k + pick(r, [1, 2, 3]);
+      const e1 = rrange(r, 0.12, 0.3), e2 = rrange(r, 0.04, 0.14);
+      const p1 = r() * TAU, p2 = r() * TAU;
+      const pts = [];
+      for (let i = 0; i <= 720; i++){
+        const th = i / 720 * TAU;
+        const rad = R * rs * (1 + e1 * Math.cos(k * th + p1) + e2 * Math.cos(l * th + p2));
+        pts.push([w / 2 + Math.cos(th) * rad, h / 2 + Math.sin(th) * rad]);
+      }
+      paths.push({ d: dPts(pts, true), sw: o.sw * wsm });
+    }
+    return { paths, meta: `rosette · ${rings.length} rings` };
+  }
+  const nRep = Math.max(2, Math.min(8, Math.round(w / (h * rrange(r, 1.2, 3)))));
+  const nStr = irange(r, 1, 3);
+  const taper = r() < 0.5;
+  for (let s = 0; s < nStr; s++){
+    const k1 = nRep * irange(r, 1, 3);
+    const k2 = k1 + pick(r, [1, 2]);
+    const a1 = rrange(r, 0.55, 0.8), a2 = 1 - a1;
+    const p1 = r() * TAU, p2 = r() * TAU;
+    const amp = (h / 2 - 2) * rrange(r, 0.6, 0.95);
+    const pts = [];
+    for (let x = 0; x <= w; x += 2){
+      const env = taper ? 0.3 + 0.7 * Math.pow(Math.sin(Math.PI * x / w), 0.8) : 1;
+      const y = h / 2 + amp * env * (a1 * Math.sin(TAU * k1 * x / w + p1) + a2 * Math.sin(TAU * k2 * x / w + p2));
+      pts.push([x, y]);
+    }
+    paths.push({ d: dPts(pts, false), sw: o.sw * (s === 0 ? 1.4 : 0.7) });
+  }
+  return { paths, meta: `${nStr} strands · ${nRep} repeats${taper ? ' · tapered' : ''}` };
+}
+
+/* ------------------------------------------------------------------ */
+/* E · Growth — differential loop / vine rooted in the ink of text    */
+/* ------------------------------------------------------------------ */
+function genGrow(w, h, seed, o){
+  if (o.variant === 'ink') return growInk(w, h, seed, o);
+  const r = mulberry32(seed ^ 0x9D17);
+  const cx = w / 2, cy = h / 2;
+  const ax = w / 2 - 6, by = h / 2 - 6;
+  const N0 = 120;
+  let pts = [];
+  for (let i = 0; i < N0; i++){ const a = i / N0 * TAU; pts.push([cx + Math.cos(a) * ax * 0.62, cy + Math.sin(a) * by * 0.62]); }
+  const rr = Math.max(9, Math.min(w, h) * 0.055);
+  let maxLen = 6;
+  const iters = 300;
+  for (let it = 0; it < iters; it++){
+    maxLen *= 1.006;
+    // spatial hash
+    const grid = new Map();
+    const cs = rr;
+    pts.forEach((p, i) => { const kk = Math.floor(p[0] / cs) + ',' + Math.floor(p[1] / cs); if (!grid.has(kk)) grid.set(kk, []); grid.get(kk).push(i); });
+    const disp = new Array(pts.length).fill(null).map(() => [0, 0]);
+    for (let i = 0; i < pts.length; i++){
+      const gx = Math.floor(pts[i][0] / cs), gy = Math.floor(pts[i][1] / cs);
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++){
+        const cellArr = grid.get((gx + dx) + ',' + (gy + dy));
+        if (!cellArr) continue;
+        for (const j of cellArr){
+          if (j <= i) continue;
+          const ddx = pts[j][0] - pts[i][0], ddy = pts[j][1] - pts[i][1];
+          const d = Math.hypot(ddx, ddy);
+          if (d > rr || d < 1e-6) continue;
+          const f = 0.55 * (1 - d / rr) / d;
+          disp[i][0] -= ddx * f; disp[i][1] -= ddy * f;
+          disp[j][0] += ddx * f; disp[j][1] += ddy * f;
+        }
+      }
+    }
+    const n = pts.length;
+    for (let i = 0; i < n; i++){
+      const prev = pts[(i - 1 + n) % n], next = pts[(i + 1) % n];
+      const mx = (prev[0] + next[0]) / 2, my = (prev[1] + next[1]) / 2;
+      let x = pts[i][0] + disp[i][0] + (mx - pts[i][0]) * 0.14;
+      let y = pts[i][1] + disp[i][1] + (my - pts[i][1]) * 0.14;
+      const v = ((x - cx) / ax) ** 2 + ((y - cy) / by) ** 2;
+      if (v > 1){ const t = 1 / Math.sqrt(v); x = cx + (x - cx) * t; y = cy + (y - cy) * t; }
+      pts[i] = [x, y];
+    }
+    // insert
+    const ins = [];
+    for (let i = 0; i < pts.length; i++){
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      if (Math.hypot(b[0] - a[0], b[1] - a[1]) > maxLen)
+        ins.push([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
+    }
+    for (let k = ins.length - 1; k >= 0; k--) pts.splice(k * 2 + 1, 0, ins[k]);
+    if (pts.length > 1400) break;
+  }
+  return { paths: [{ d: dPts(chaikin(pts, 1, true), true), sw: o.sw }], meta: `differential · ${pts.length} nodes` };
+}
+
+function growInk(w, h, seed, o){
+  const r = mulberry32(seed ^ 0x1CA);
+  let attract = [];
+  const text = (o.text || 'ornament').trim();
+  let got = false;
+  if (typeof document !== 'undefined' && text){
+    try {
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(8, Math.floor(w)); cv.height = Math.max(8, Math.floor(h));
+      const g = cv.getContext('2d', { willReadFrequently: true });
+      let fs = h * 0.72;
+      g.font = `700 ${fs}px Georgia, serif`;
+      const tw = g.measureText(text).width || 1;
+      if (tw > w * 0.92) fs *= (w * 0.92) / tw;
+      g.font = `700 ${fs}px Georgia, serif`;
+      g.textBaseline = 'middle'; g.textAlign = 'center';
+      g.fillStyle = '#000';
+      g.fillText(text, w / 2, h / 2);
+      const data = g.getImageData(0, 0, cv.width, cv.height).data;
+      const stride = Math.max(2, Math.floor(Math.sqrt(w * h / 2600)));
+      for (let y = 0; y < cv.height; y += stride)
+        for (let x = 0; x < cv.width; x += stride)
+          if (data[(y * cv.width + x) * 4 + 3] > 120) attract.push([x + 1, y + 1]);
+      got = attract.length > 0;
+    } catch (e) { got = false; }
+  }
+  if (!got){
+    const n = 500;
+    for (let i = 0; i < n; i++){ const a = r() * TAU, rad = Math.sqrt(r()); attract.push([w / 2 + Math.cos(a) * rad * w * 0.36, h / 2 + Math.sin(a) * rad * h * 0.36]); }
+  }
+  const alive = new Array(attract.length).fill(true);
+  let aliveN = attract.length;
+  const nodes = [], parent = [], depth = [];
+  // roots planted at the ink itself: evenly-ranked leftmost attractors,
+  // so the vine always has something to grow toward
+  const byX = attract.map((a, i) => i).sort((a, b) => attract[a][0] - attract[b][0]);
+  const lo = byX.slice(0, Math.max(6, Math.floor(byX.length * 0.25)));
+  const nR = Math.min(irange(r, 3, 5), lo.length);
+  for (let i = 0; i < nR; i++){
+    const ai = lo[Math.min(lo.length - 1, Math.floor((i + 0.5) / nR * lo.length))];
+    nodes.push([attract[ai][0], attract[ai][1]]); parent.push(-1); depth.push(0);
+  }
+  const step = Math.max(3.5, h / 26), di = step * 5.5, kill = step * 1.9;
+  const cs = di, cs2 = Math.max(kill, 1);
+  // static attractor grid for kills
+  const agrid = new Map();
+  attract.forEach((a, i) => { const kk = Math.floor(a[0] / cs2) + ',' + Math.floor(a[1] / cs2); if (!agrid.has(kk)) agrid.set(kk, []); agrid.get(kk).push(i); });
+  const killNear = (x, y) => {
+    const gx = Math.floor(x / cs2), gy = Math.floor(y / cs2);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++){
+      const arr = agrid.get((gx + dx) + ',' + (gy + dy)); if (!arr) continue;
+      for (const ai of arr) if (alive[ai] && Math.hypot(attract[ai][0] - x, attract[ai][1] - y) < kill){ alive[ai] = false; aliveN--; }
+    }
+  };
+  for (const n of nodes) killNear(n[0], n[1]);
+  // node grid for nearest-node assignment
+  let nodeGrid = new Map();
+  const regrid = () => {
+    nodeGrid = new Map();
+    nodes.forEach((n, i) => { const kk = Math.floor(n[0] / cs) + ',' + Math.floor(n[1] / cs); if (!nodeGrid.has(kk)) nodeGrid.set(kk, []); nodeGrid.get(kk).push(i); });
+  };
+  regrid();
+  const maxDepth = [0];
+  let guard = 600;
+  while (aliveN > 0 && nodes.length < 2400 && guard--){
+    // each live attractor pulls its nearest node within di (canonical assignment)
+    const pulls = new Map();
+    for (let ai = 0; ai < attract.length; ai++){
+      if (!alive[ai]) continue;
+      const a = attract[ai];
+      const gx = Math.floor(a[0] / cs), gy = Math.floor(a[1] / cs);
+      let best = -1, bd = di * di;
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++){
+        const arr = nodeGrid.get((gx + dx) + ',' + (gy + dy)); if (!arr) continue;
+        for (const ni of arr){
+          const d2 = (nodes[ni][0] - a[0]) ** 2 + (nodes[ni][1] - a[1]) ** 2;
+          if (d2 < bd){ bd = d2; best = ni; }
+        }
+      }
+      if (best < 0) continue;
+      if (!pulls.has(best)) pulls.set(best, [0, 0]);
+      const p = pulls.get(best);
+      p[0] += a[0] - nodes[best][0]; p[1] += a[1] - nodes[best][1];
+    }
+    if (!pulls.size) break;
+    const newNodes = [];
+    for (const [ni, p] of pulls){
+      const L = Math.hypot(p[0], p[1]) || 1;
+      newNodes.push([ni, nodes[ni][0] + p[0] / L * step, nodes[ni][1] + p[1] / L * step]);
+    }
+    for (const [pi, nx, ny] of newNodes){
+      nodes.push([nx, ny]); parent.push(pi);
+      const d = depth[pi] + 1; depth.push(d); if (d > maxDepth[0]) maxDepth[0] = d;
+    }
+    regrid();
+    for (let k = nodes.length - newNodes.length; k < nodes.length; k++) killNear(nodes[k][0], nodes[k][1]);
+  }
+  // segments bucketed by taper
+  const buckets = new Map();
+  for (let i = 1; i < nodes.length; i++){
+    if (parent[i] < 0) continue;
+    const wd = f2(Math.max(0.4, 2.1 * o.sw * (1 - depth[i] / (maxDepth[0] || 1)) + 0.4 * o.sw));
+    if (!buckets.has(wd)) buckets.set(wd, []);
+    buckets.get(wd).push([nodes[parent[i]], nodes[i]]);
+  }
+  const paths = [];
+  for (const [wd, segs] of buckets){
+    let d = '';
+    for (const [a, b] of segs) d += `M${f2(a[0])} ${f2(a[1])}L${f2(b[0])} ${f2(b[1])}`;
+    paths.push({ d, sw: wd });
+  }
+  return { paths, meta: `ink vine · "${text.slice(0, 16)}" · ${nodes.length} nodes` };
+}
+
+/* ------------------------------------------------------------------ */
+/* F · Cadel — broad-nib ductus, asemic flourish                      */
+/* ------------------------------------------------------------------ */
+function genCadel(w, h, seed, o){
+  const r = mulberry32(seed ^ 0xCAD1);
+  const u = (h * 0.74) / 1.9, yBase = h * 0.66;
+  const nib = -0.62;
+  const wm = u * 0.3;
+  const strokes = [];
+  const C3 = (p0, p1, p2, p3) => [p0, p1, p2, p3];
+  let cur = 0;
+  const add = (cub, kind) => strokes.push({ cub, kind });
+  add([C3([cur - 0.5, 0.3], [cur - 0.28, 0.36], [cur - 0.1, 0.2], [cur, 0])], 'hair');
+  const nMid = 2 + Math.floor(r() * 3);
+  for (let i = 0; i < nMid; i++){
+    const kd = pick(r, ['stemUp', 'stemDown', 'shoulder', 'loop', 'wave']);
+    if (kd === 'stemUp'){ add([C3([cur, 0], [cur + .02, -.5], [cur + .05, -.95], [cur + .1, -1.35])], 'broad'); cur += 0.52; }
+    else if (kd === 'stemDown'){ add([C3([cur, -.72], [cur + .02, -.4], [cur + .05, -.05], [cur + .09, .35])], 'broad'); cur += 0.5; }
+    else if (kd === 'shoulder'){
+      add([C3([cur, 0], [cur + .05, -.4], [cur + .25, -.72], [cur + .5, -.72])], 'hair');
+      add([C3([cur + .5, -.72], [cur + .68, -.7], [cur + .72, -.4], [cur + .74, 0])], 'broad');
+      cur += 0.82;
+    } else if (kd === 'loop'){
+      add([C3([cur, 0], [cur + .02, -.5], [cur + .05, -1.0], [cur + .08, -1.35]),
+           C3([cur + .08, -1.35], [cur + .45, -1.28], [cur + .6, -1.05], [cur + .5, -.8]),
+           C3([cur + .5, -.8], [cur + .42, -.5], [cur + .4, -.2], [cur + .42, 0])], 'broad');
+      cur += 0.55;
+    } else { add([C3([cur, 0], [cur + .12, .14], [cur + .36, .18], [cur + .52, 0])], 'hair'); cur += 0.55; }
+  }
+  if (r() < 0.5){
+    add([C3([cur, 0], [cur + .3, .18], [cur + .65, .16], [cur + .85, -.05]),
+         C3([cur + .85, -.05], [cur + 1.05, -.28], [cur + .95, -.5], [cur + .72, -.38])], 'broad');
+    cur += 1.0;
+  } else {
+    const cx = cur + 0.3, cy = -0.16, R0 = 0.2, th0 = Math.PI * 0.9, dir = r() < 0.5 ? 1 : -1;
+    const turns = 2.2 + r();
+    const pts = [];
+    for (let i = 0; i <= 40; i++){ const t = i / 40, th = th0 + dir * turns * TAU * t, rad = R0 * (1 - 0.9 * t) + 0.02; pts.push([cx + Math.cos(th) * rad, cy + Math.sin(th) * rad]); }
+    add([C3([cur, 0], [cur + .12, -.02], [cur + .2, -.05], [pts[0][0], pts[0][1]])], 'hair');
+    strokes.push({ pts, kind: 'hair' });
+    cur += 0.7;
+  }
+  const xs = cur * u > w * 0.92 ? (w * 0.92) / (cur * u) : 1;
+  const xOff = (w - cur * u * xs) / 2;
+  const X = x => xOff + x * u * xs, Y = yy => yBase + yy * u;
+
+  const bezPt = (p0, p1, p2, p3, t) => { const uu = 1 - t; return [
+    uu*uu*uu*p0[0] + 3*uu*uu*t*p1[0] + 3*uu*t*t*p2[0] + t*t*t*p3[0],
+    uu*uu*uu*p0[1] + 3*uu*uu*t*p1[1] + 3*uu*t*t*p2[1] + t*t*t*p3[1]]; };
+  const paths = [];
+  for (const s of strokes){
+    let sk = [];
+    if (s.pts){ sk = s.pts.map(p => [X(p[0]), Y(p[1])]); }
+    else for (const cb of s.cub){
+      const len = Math.hypot(cb[3][0]-cb[0][0], cb[3][1]-cb[0][1]) + Math.hypot(cb[1][0]-cb[0][0], cb[1][1]-cb[0][1]);
+      const n = Math.max(6, Math.ceil(len * u * xs / 2.2));
+      const q = cb.map(p => [X(p[0]), Y(p[1])]);
+      for (let i = 0; i <= n; i++) sk.push(bezPt(q[0], q[1], q[2], q[3], i / n));
+    }
+    if (s.kind === 'hair'){ paths.push({ d: dPts(sk, false), sw: o.sw * 0.85 }); continue; }
+    const L = [], R = [];
+    for (let i = 0; i < sk.length; i++){
+      const a = sk[Math.max(0, i - 1)], b = sk[Math.min(sk.length - 1, i + 1)];
+      const tx = b[0] - a[0], ty = b[1] - a[1];
+      const tl = Math.hypot(tx, ty) || 1;
+      const wd = wm * Math.max(0.07, Math.abs(Math.sin(Math.atan2(ty, tx) - nib)));
+      const nx = -ty / tl, ny = tx / tl;
+      L.push([sk[i][0] + nx * wd / 2, sk[i][1] + ny * wd / 2]);
+      R.push([sk[i][0] - nx * wd / 2, sk[i][1] - ny * wd / 2]);
+    }
+    paths.push({ d: dPts(chaikin(L.concat(R.reverse()), 1, true), true), sw: 0, fill: true });
+  }
+  return { paths, meta: `cadel · ${strokes.length} strokes` };
+}
+
+/* ------------------------------------------------------------------ */
+const SPECIES = [
+  { id: 'ca',    name: 'CA frame',     desc: 'Wolfram CA slice · scroll = generations', variants: ['frame', 'bands'] },
+  { id: 'wfc',   name: 'WFC flourish', desc: 'hex truchet · curl closures',       variants: ['band', 'roundel'] },
+  { id: 'knot',  name: 'Knot weave',   desc: 'woven strands · rim reflexes',      variants: ['medal', 'divider'] },
+  { id: 'guil',  name: 'Guilloché',    desc: 'near-commensurate beats',           variants: ['band', 'rosette'] },
+  { id: 'grow',  name: 'Growth',       desc: 'differential · ink-rooted vine',    variants: ['differential', 'ink'] },
+  { id: 'cadel', name: 'Cadel',        desc: 'broad-nib asemic flourish',         variants: ['tailpiece'] },
+];
+const GEN = { ca: genCA, wfc: genWFC, knot: genKnot, guil: genGuil, grow: genGrow, cadel: genCadel };
+function makeOrnament(species, w, h, seed, opts){
+  return GEN[species](w, h, seed >>> 0, opts);
+}
+/*====GEN-END====*/
+
+/* ============================ studio UI ============================ */
+const $ = id => document.getElementById(id);
+const state = {
+  legacy: false,                       // CA frame is the product; the rest are experiments
+  variant: 'frame', sym: 'v', seedProc: null, seed: 42, z: 0, drift: false, driftSpd: 0.02,
+  stripTB: 52, stripS: 72, standoff: 5, padInner: 6, padOuter: 6,
+  rule: null, dens: 0.4, rate: 0.4,
+  detail: 4, smooth: 4, organic: 0, bodyW: 1,
+  theme: 'light', tab: 'studio',
+  survey: false, surveyVals: null,
+  // legacy species state
+  sp: 'wfc', spVariant: 'band', w: 640, h: 240, sw: 1.1, animate: true,
+};
+
+const LOREM = `Ornament is not a crime, but an argument: the margin is where the page thinks. What the algorithm draws there must obey the same discipline the type obeys — hairlines that match hairlines, closure where lines meet the frame, ink that never shouts over the text.`;
+
+/* ---------- CA frame panel ---------- */
+const bind = (id, key, fmt, post) => {
+  const el = $(id);
+  el.oninput = () => {
+    state[key] = +el.value;
+    const lab = $(id + 'v');
+    if (lab) lab.textContent = fmt ? fmt(+el.value) : el.value;
+    if (post) post();
+    render();
+  };
+};
+bind('stripTB', 'stripTB', v => v + ' px');
+bind('stripS', 'stripS', v => v + ' px');
+bind('standoff', 'standoff', v => v + ' px');
+bind('padInner', 'padInner', v => v + ' px');
+bind('padOuter', 'padOuter', v => v + ' px');
+bind('dens', 'dens', v => v.toFixed(2));
+bind('rate', 'rate', v => v.toFixed(2));
+bind('organic', 'organic', v => ['geometric', 'crisp', 'soft', 'organic'][v]);
+bind('detail', 'detail', v => v.toFixed(2) + ' px');
+bind('smooth', 'smooth', v => v + ' /seg');
+bind('bodyW', 'bodyW', v => v.toFixed(2));
+bind('driftSpd', 'driftSpd', v => v.toFixed(3));
+$('rule').oninput = e => {
+  const v = e.target.value.trim();
+  state.rule = v === '' ? null : Math.max(0, Math.min(255, Math.round(+v)));
+  render();
+};
+$('sym').onchange = e => { state.sym = e.target.value; render(); };
+$('seedProc').onchange = e => { state.seedProc = e.target.value || null; render(); };
+$('zsel').oninput = e => {
+  state.z = +e.target.value; $('zval').textContent = state.z.toFixed(1);
+  if (state.drift){ state.drift = false; $('driftBtn').textContent = '▶ drift'; }
+  render();
+};
+$('modeFrame').onclick = () => setMode('frame');
+$('modeBands').onclick = () => setMode('bands');
+function setMode(v){
+  state.variant = v;
+  $('modeFrame').classList.toggle('on', v === 'frame');
+  $('modeBands').classList.toggle('on', v === 'bands');
+  render();
+}
+$('driftBtn').onclick = () => {
+  state.drift = !state.drift;
+  $('driftBtn').textContent = state.drift ? '⏸ drifting' : '▶ drift';
+  if (state.drift) requestAnimationFrame(driftStep);
+};
+function driftStep(){
+  if (!state.drift) return;
+  state.z += state.driftSpd;
+  $('zval').textContent = state.z.toFixed(1);
+  $('zsel').value = Math.min(600, state.z);
+  render();
+  if (state.drift) requestAnimationFrame(driftStep);
+}
+$('seed').onchange = e => { state.seed = e.target.value >>> 0; $('semantic').value = ''; render(); };
+$('dice').onclick = () => { state.seed = (Math.random() * 0xffffffff) >>> 0; $('semantic').value = ''; $('seed').value = state.seed; if (state.survey) state.surveyVals = rollSurvey(); render(); };
+$('semantic').oninput = e => { const t = e.target.value; if (t){ state.seed = fnv1a(t); $('seed').value = state.seed; render(); } };
+$('themeBtn').onclick = () => { state.theme = state.theme === 'light' ? 'dark' : 'light'; document.body.dataset.theme = state.theme; };
+$('copyBtn').onclick = () => {
+  const svg = $('paper').querySelector('svg');
+  if (!svg) return;
+  navigator.clipboard.writeText(svg.outerHTML).then(() => toast('SVG copied'), () => toast('clipboard blocked'));
+};
+function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1400); }
+
+/* ---------- survey: wide-range random settings, rated by you ----------
+   Randomized (the knobs that shape the field): dens, rate, standoff,
+   detail, z, maxlines, minlen. Pinned to the site's SETTINGS: weight 1,
+   hair 1, organic 0, smooth 2, gray ink. Seed and box stay manual. */
+const SURVEY_RANGES = {
+  dens: [0.10, 1.00], rate: [0.05, 1.50], standoff: [2, 80],
+  detail: [2.4, 10], z: [0, 140], minlen: [0.20, 4.00],
+};
+function rollSurvey(){
+  const rr = (a, b) => +(a + Math.random() * (b - a)).toFixed(3);
+  return {
+    dens: rr(...SURVEY_RANGES.dens),
+    rate: rr(...SURVEY_RANGES.rate),
+    standoff: rr(...SURVEY_RANGES.standoff),
+    detail: rr(...SURVEY_RANGES.detail),
+    z: rr(...SURVEY_RANGES.z),
+    minlen: rr(...SURVEY_RANGES.minlen),
+    maxlines: Math.random() < 0.15 ? 0 : 10 + Math.floor(Math.random() * 141),  // 0 = unlimited
+  };
+}
+let LOG = [];
+try { LOG = JSON.parse(localStorage.getItem('orn-survey-log')) || []; } catch (e) { LOG = []; }
+let lastGen = null;
+
+$('surveyBtn').onclick = () => {
+  state.survey = !state.survey;
+  $('surveyBtn').classList.toggle('on', state.survey);
+  if (state.survey){
+    if (state.legacy) pickSpecies('ca');            // the survey lives on the CA stage
+    state.seed = (Math.random() * 0xffffffff) >>> 0;
+    $('seed').value = state.seed;
+    state.surveyVals = rollSurvey();
+  }
+  syncSurveyUI();
+  render();
+};
+function syncSurveyUI(){
+  ['rule', 'dens', 'rate', 'standoff', 'detail', 'smooth', 'organic', 'bodyW', 'zsel', 'driftBtn', 'driftSpd']
+    .forEach(id => { const el = $(id); if (el) el.disabled = state.survey; });
+  updateRankVis();
+}
+function updateRankVis(){ $('rankbar').hidden = !state.survey || state.legacy || state.tab !== 'studio'; }
+document.querySelectorAll('#rankbar .rbtn').forEach(b => { b.onclick = () => rateCurrent(+b.dataset.r); });
+$('skipBtn').onclick = () => $('dice').click();
+function rateCurrent(n){
+  if (!state.survey || state.legacy || !lastGen || !lastGen.settings){ toast('nothing to rate'); return; }
+  LOG.push({ rank: n, t: Date.now(), seed: lastGen.seed, variant: lastGen.variant, box: lastGen.box,
+             pad: { tb: state.stripTB, s: state.stripS }, settings: lastGen.settings, meta: lastGen.meta });
+  saveLog();
+  toast(`rated ${n}/5 · ${LOG.length} logged`);
+  $('dice').click();                               // next sample, please
+}
+function saveLog(){
+  try { localStorage.setItem('orn-survey-log', JSON.stringify(LOG)); } catch (e) {}
+  $('logCount').textContent = LOG.length + ' rated';
+}
+$('logCopy').onclick = () => {
+  if (!LOG.length){ toast('nothing rated yet'); return; }
+  const payload = { v: 1, note: 'demo survey · ink pinned to site (1px gray, organic 0, smooth 2, hair 1, weight 1)',
+                    ranges: SURVEY_RANGES, entries: LOG };
+  const txt = JSON.stringify(payload);
+  navigator.clipboard.writeText(txt).then(() => toast(`copied ${LOG.length} ratings`), () => { console.log(txt); toast('clipboard blocked — dumped to console'); });
+};
+$('logClear').onclick = () => { LOG = []; saveLog(); toast('log cleared'); };
+saveLog();
+
+/* ---------- legacy panel (the other species) ---------- */
+const spDiv = $('species');
+SPECIES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.innerHTML = `${i + 1} · ${s.name}<small>${s.desc}</small>`;
+  b.dataset.id = s.id;
+  b.onclick = () => pickSpecies(s.id);
+  spDiv.appendChild(b);
+});
+$('variant').onchange = e => { state.spVariant = e.target.value; render(); };
+$('seed2').onchange = e => { state.seed = e.target.value >>> 0; $('semantic2').value = ''; render(); };
+$('dice2').onclick = () => { state.seed = (Math.random() * 0xffffffff) >>> 0; $('seed2').value = state.seed; render(); };
+$('semantic2').oninput = e => { const t = e.target.value; if (t){ state.seed = fnv1a(t); $('seed2').value = state.seed; render(); } };
+$('w').onchange = e => { state.w = Math.max(60, Math.min(1400, +e.target.value || 640)); render(); };
+$('h').onchange = e => { state.h = Math.max(40, Math.min(900, +e.target.value || 240)); render(); };
+$('sw').oninput = e => { state.sw = +e.target.value; render(); };
+$('animBtn').onclick = () => { state.animate = !state.animate; render(); };
+$('themeBtn2').onclick = () => $('themeBtn').click();
+function pickSpecies(id){
+  const sp = SPECIES.find(s => s.id === id);
+  state.legacy = id !== 'ca';
+  if (id === 'ca'){ state.variant = 'frame'; }
+  else { state.sp = id; if (!sp.variants.includes(state.spVariant)) state.spVariant = sp.variants[0]; }
+  syncPanels();
+  render();
+}
+function syncPanels(){
+  $('panelCA').hidden = state.legacy;
+  $('panelLegacy').hidden = !state.legacy;
+  [...spDiv.children].forEach(b => b.classList.toggle('on', b.dataset.id === state.sp));
+  const sp = SPECIES.find(s => s.id === state.sp);
+  $('variant').innerHTML = sp.variants.map(v => `<option ${v === state.spVariant ? 'selected' : ''}>${v}</option>`).join('');
+}
+
+/* ---------- render ---------- */
+function render(){
+  const paper = $('paper');
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const t0 = performance.now();
+
+  if (!state.legacy){
+    // ---- CA frame on a stage: the real usage, ornament around text ----
+    paper.innerHTML = '';
+    paper.classList.remove('naked');
+    const stage = document.createElement('div');
+    stage.className = 'stage' + (state.variant === 'bands' ? ' bands' : '');
+    stage.style.padding = `${state.stripTB}px ${(state.variant === 'bands' ? 2 : state.stripS)}px`;
+    stage.title = 'click to reroll seed';
+    stage.innerHTML = `<div class="prose"><h2>The grammar of the margin</h2><p>${LOREM}</p></div>`;
+    paper.appendChild(stage);
+    const pr = stage.querySelector('.prose').getBoundingClientRect();
+    const sr = stage.getBoundingClientRect();
+    const inner = { x0: pr.left - sr.left, y0: pr.top - sr.top, x1: pr.right - sr.left, y1: pr.bottom - sr.top };
+    const W = Math.max(120, Math.round(sr.width)), H = Math.max(80, Math.round(sr.height));
+    if (state.survey && !state.surveyVals) state.surveyVals = rollSurvey();
+    const sv = state.survey ? state.surveyVals : null;
+    const opts = {
+      variant: state.variant, sym: state.sym, seedProc: state.seedProc, z: sv ? sv.z : state.z, inner,
+      rule: sv ? null : state.rule, dens: sv ? sv.dens : state.dens, rate: sv ? sv.rate : state.rate,
+      standoff: sv ? sv.standoff : state.standoff, detail: sv ? sv.detail : state.detail,
+      padInner: sv ? null : state.padInner, padOuter: sv ? null : state.padOuter,
+      smooth: sv ? 2 : state.smooth, organic: sv ? 0 : state.organic, bodyW: state.bodyW,
+      text: $('semantic').value || 'ornament',
+    };
+    // survey pins the ink to the site's: 1px uniform, hair tiers off
+    if (sv){ opts.weight = 1; opts.hair = 1; opts.maxlines = sv.maxlines; opts.minlen = sv.minlen; }
+    let res;
+    try {
+      res = makeOrnament('ca', W, H, state.seed, opts);
+    } catch (e){ $('status').textContent = 'error: ' + e.message; console.error(e); return; }
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('xmlns', svgNS);
+    for (const p of res.paths || []){
+      const el = document.createElementNS(svgNS, 'path');
+      el.setAttribute('d', p.d);
+      el.setAttribute('fill', 'none');
+      el.setAttribute('stroke', state.survey ? '#77777777' : 'currentColor');
+      el.setAttribute('stroke-width', p.sw);
+      el.setAttribute('stroke-linecap', 'round');
+      el.setAttribute('stroke-linejoin', 'round');
+      svg.appendChild(el);
+    }
+    stage.appendChild(svg);
+    stage.onclick = () => $('dice').click();
+    const ms = (performance.now() - t0).toFixed(1);
+    lastGen = { seed: state.seed, variant: state.variant, box: { w: W, h: H },
+                settings: sv ? Object.assign({}, sv, { weight: 1, hair: 1, organic: 0, smooth: 2 }) : null,
+                meta: res.meta || '' };
+    $('status').textContent = `${sv ? 'survey' : 'ca'}/${state.variant} · ${res.meta || ''} · ${ms} ms`;
+    if (sv) $('svInfo').textContent = `dens ${sv.dens} · rate ${sv.rate} · stand ${sv.standoff} · cell ${sv.detail} · z ${sv.z} · ${sv.maxlines === 0 ? '∞' : '≤' + sv.maxlines} lines · lint ${sv.minlen}`;
+    return;
+  }
+
+  // ---- legacy species preview ----
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let res;
+  try { res = makeOrnament(state.sp, state.w, state.h, state.seed, { variant: state.spVariant, sw: state.sw, text: $('semantic2').value || 'ornament' }); }
+  catch (e){ $('status').textContent = 'error: ' + e.message; console.error(e); return; }
+  const ms = (performance.now() - t0).toFixed(1);
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${state.w} ${state.h}`);
+  svg.setAttribute('width', Math.min(state.w, 820));
+  svg.setAttribute('xmlns', svgNS);
+  const animPaths = [];
+  for (const p of res.paths || []){
+    const el = document.createElementNS(svgNS, 'path');
+    el.setAttribute('d', p.d);
+    if (p.fill) el.setAttribute('fill', 'currentColor');
+    else { el.setAttribute('fill', 'none'); el.setAttribute('stroke', 'currentColor'); el.setAttribute('stroke-width', p.sw); el.setAttribute('stroke-linecap', 'round'); el.setAttribute('stroke-linejoin', 'round'); }
+    svg.appendChild(el);
+    animPaths.push({ el, fill: !!p.fill });
+  }
+  for (const ov of res.overlays || []){
+    const h1 = document.createElementNS(svgNS, 'path');
+    h1.setAttribute('d', ov.halo); h1.setAttribute('fill', 'none');
+    h1.setAttribute('stroke', 'var(--orn-bg, #fff)'); h1.setAttribute('stroke-width', (ov.sw || state.sw) * 3.3);
+    h1.setAttribute('stroke-linecap', 'butt');
+    svg.appendChild(h1);
+    const o1 = document.createElementNS(svgNS, 'path');
+    o1.setAttribute('d', ov.over); o1.setAttribute('fill', 'none');
+    o1.setAttribute('stroke', 'currentColor'); o1.setAttribute('stroke-width', ov.sw || state.sw);
+    o1.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(o1);
+  }
+  paper.innerHTML = '';
+  paper.classList.add('naked');
+  const holder = document.createElement('div');
+  holder.className = 'ornament'; holder.title = 'click to reroll seed';
+  holder.appendChild(svg);
+  paper.appendChild(holder);
+  if (state.animate && !reduced){
+    animPaths.forEach((a, i) => {
+      if (a.fill){ a.el.style.opacity = '0'; a.el.style.transition = `opacity .5s ease ${Math.min(500, i * 40)}ms`; requestAnimationFrame(() => a.el.style.opacity = '1'); return; }
+      let L = 0; try { L = a.el.getTotalLength(); } catch (e) {}
+      if (!L) return;
+      a.el.style.strokeDasharray = L; a.el.style.strokeDashoffset = L;
+      a.el.getBoundingClientRect();
+      a.el.style.transition = `stroke-dashoffset .55s ease ${Math.min(500, i * 26)}ms`;
+      requestAnimationFrame(() => { a.el.style.strokeDashoffset = '0'; });
+    });
+    setTimeout(() => animPaths.forEach(a => { if (!a.fill) a.el.style.strokeDasharray = ''; }), 1600);
+  }
+  $('status').textContent = `${state.sp}/${state.spVariant} · ${res.meta || ''} · ${(res.paths || []).length} paths · ${ms} ms`;
+}
+
+/* keyboard */
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  const n = +e.key;
+  if (state.survey && !state.legacy && n >= 1 && n <= 5){ rateCurrent(n); return; }
+  if (n >= 1 && n <= SPECIES.length) pickSpecies(SPECIES[n - 1].id);
+  else if (e.key === 'r' || e.key === 'R') state.legacy ? $('dice2').click() : $('dice').click();
+  else if (e.key === 't' || e.key === 'T') $('themeBtn').click();
+  else if (e.key === 'd' || e.key === 'D') $('driftBtn').click();
+});
+
+document.body.dataset.theme = state.theme;
+syncPanels();
+render();
+
+/* ============================ scroll test ========================== */
+const ARTICLE = [
+  'This block is framed once, when it approaches the viewport. No animation, no motion: the ornament is a static mark, generated on demand and then left alone.',
+  'Each frame gets its phase from a hash of this very paragraph, so a section always wears the same pattern — stable, like a signature, not a slideshow.',
+  'Narrow the window and the side strips give up: only the top and bottom bands remain. That is the whole responsive rule — space decides, nothing is hardcoded.',
+  'The lines never touch the text and never touch the edge of their own frame; every contour closes with a standoff. Where the automaton rests, the strip rests too.',
+  'Style, rule, density, weight — the studio panel controls this page live, exactly as it would control the memo site.',
+  'Determinism matters: randomness without stability reads as advertising. Click any block to reroll its seed.',
+];
+function buildScrollTest(){
+  const art = $('article');
+  art.innerHTML = '<h2>The frame in the wild</h2>';
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const secs = [];
+  ARTICLE.forEach((txt, i) => {
+    const sec = document.createElement('div'); sec.className = 'sec';
+    const p = document.createElement('div'); p.className = 'secp'; p.textContent = txt;
+    const svg = document.createElementNS(svgNS, 'svg');
+    sec.appendChild(p); sec.appendChild(svg);
+    const tag = document.createElement('div'); tag.className = 'sectag';
+    art.appendChild(sec); art.appendChild(tag);
+    const rec = { sec, p, svg, tag, seed: fnv1a(txt), i, done: false };
+    sec.onclick = () => { rec.seed = (Math.random() * 0xffffffff) >>> 0; draw(rec); };
+    secs.push(rec);
+  });
+  const narrow = () => innerWidth < 700;
+  function draw(rec){
+    const bands = narrow();
+    rec.done = true;
+    rec.sec.classList.toggle('bands', bands);
+    rec.sec.style.padding = `${state.stripTB}px ${(bands ? 2 : state.stripS)}px`;
+    const sr = rec.sec.getBoundingClientRect();
+    const pr = rec.p.getBoundingClientRect();
+    const inner = { x0: pr.left - sr.left, y0: pr.top - sr.top, x1: pr.right - sr.left, y1: pr.bottom - sr.top };
+    const W = Math.max(60, Math.round(sr.width)), H = Math.max(40, Math.round(sr.height));
+    // static phase, hashed from the section's own seed — stable per section
+    const z = (rec.seed % 9973) / 9973 * 140;
+    const t0 = performance.now();
+    let res = { paths: [] };
+    try {
+      res = makeOrnament('ca', W, H, rec.seed, {
+        variant: bands ? 'bands' : 'frame', sym: state.sym, seedProc: state.seedProc, z, inner,
+        rule: state.rule, dens: state.dens, rate: state.rate, standoff: state.standoff,
+        padInner: state.padInner, padOuter: state.padOuter,
+        detail: state.detail, smooth: state.smooth, organic: state.organic, bodyW: state.bodyW,
+      });
+    } catch (e) { console.error(e); }
+    const ms = (performance.now() - t0).toFixed(1);
+    rec.svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    while (rec.svg.firstChild) rec.svg.removeChild(rec.svg.firstChild);
+    for (const q of res.paths || []){
+      const el = document.createElementNS(svgNS, 'path');
+      el.setAttribute('d', q.d);
+      el.setAttribute('fill', 'none');
+      el.setAttribute('stroke', 'currentColor');
+      el.setAttribute('stroke-width', q.sw);
+      el.setAttribute('stroke-linecap', 'round');
+      el.setAttribute('stroke-linejoin', 'round');
+      rec.svg.appendChild(el);
+    }
+    rec.tag.textContent = `${bands ? 'bands' : 'frame'} · ${['geometric', 'crisp', 'soft', 'organic'][state.organic]} · ${ms} ms · click block to reroll`;
+  }
+  // generate once per block, when it nears the viewport — nothing on scroll
+  const io = new IntersectionObserver(entries => {
+    for (const en of entries){
+      if (!en.isIntersecting) continue;
+      const rec = secs.find(s => s.sec === en.target);
+      if (rec && !rec.done){ draw(rec); io.unobserve(en.target); }
+    }
+  }, { rootMargin: '350px 0px' });
+  secs.forEach(rec => io.observe(rec.sec));
+}
+
+/* tabs */
+$('tabStudio').onclick = () => { state.tab = 'studio'; $('tabStudio').classList.add('on'); $('tabScroll').classList.remove('on'); $('paper').style.display = ''; $('scrolltest').style.display = 'none'; updateRankVis(); };
+$('tabScroll').onclick = () => {
+  state.tab = 'scroll'; $('tabScroll').classList.add('on'); $('tabStudio').classList.remove('on');
+  $('paper').style.display = 'none'; $('scrolltest').style.display = '';
+  buildScrollTest(); updateRankVis();
+};
+
+syncSurveyUI();
+render();
+</script>
+</body>
+</html>
