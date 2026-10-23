@@ -3,7 +3,7 @@
   const themes = {
     dark: {
       background: "black",
-      body: "gainsboro",
+      body: "lightsteelblue",
       color: "gold",
       hover: "yellow",
       visited: "darkkhaki",
@@ -12,7 +12,7 @@
       label: "light",
     },
     light: {
-      background: "gainsboro",
+      background: "lightsteelblue",
       body: "black",
       color: "mediumblue",
       hover: "dodgerblue",

@@ -37,15 +37,16 @@
     maxlinesPerArea: 99999, // twin-safe contour budget per 820×267 of frame area (winners 69–145; unlimited never won)
     minlen: 0,    // drop contours shorter than this × cell px (winners' absolute gates 2–35px)
     // -- stroke --
-    matchDivider: false, // take width + color from the page's <hr> (tracks theme and restyles)
+    matchDivider: true, // take width + color from the page's <hr> (tracks theme and restyles)
     weight: 1, // bold line width in px when matchDivider is off
     hair: 0.5,         // short lines draw at bold × this (1 = single weight, no tiers)
     color: null,     // stroke color when matchDivider is off; null = currentColor
     // -- line character --
-    smooth: 2,        // curve samples per segment, 2–8 (studio: smooth)
+    smooth: 8,        // curve samples per segment, 2–8 (studio: smooth)
     organic: 0,       // 0 geometric · 1 crisp · 2 soft · 3 organic (studio: style)
     sym: 'none',         // ring symmetry: 'v' left≡right · 'h' top≡bottom · 'both' · 'none' (one wrap seam)
-    seedProc: null,   // seed-row procedure: null = roll per load · harm/fm/square/chirp/noise/walk/pulse to pin
+    readout: 'noise',   // how the plane reads the CA: null = roll per load · 'ray' radiates from the text · 'noise' warps ring AND generation readouts — lace distributes, no centre
+    seedProc: 'noise',   // seed-row procedure: null = roll per load · harm/fm/square/chirp/noise/walk/pulse to pin
     // -- borders: REAL gaps in px (one-cell moats — the ornament between them
     //    is untouched; replaces the old distanding standoff window) --
     padInner: 48,                            // gap between ink and the text block
@@ -61,7 +62,7 @@
     // -- fit --
     sideMin: 0,        // px of void a side needs before it gets a strip
     edgePad: 0,        // breathing room from the viewport edge
-    bottomMax: 14000     // cap on the tail strip below the article
+    bottomMax: 240     // cap on the tail strip below the article
   };
 
   function roll() {
@@ -182,10 +183,18 @@
     var boxY1 = art.scrollHeight + (bottomRoom >= SETTINGS.sideMin ? bottomRoom : 0);
     var W = Math.round(boxX1 - boxX0);
     var H = Math.round(boxY1 - boxY0);
-    // never let the frame cross the viewport's right edge: the article and
-    // sidebar sit at fractional x, so Math.round can round the span UP and
-    // a sub-pixel overflow makes the whole page horizontally scrollable
-    W = Math.max(1, Math.min(W, Math.floor(doc.clientWidth - SETTINGS.edgePad - leftLimit)));
+    // never let the frame cross the viewport's right edge: the frame's
+    // left is placed with float arithmetic (a − (a − b) ≠ b exactly), so
+    // it can sit an ulp PAST leftLimit — the 1px slack absorbs that and
+    // scrollHeight/rounding, or the page gets a scrollbar for a hair
+    W = Math.max(1, Math.min(W, Math.floor(doc.clientWidth - SETTINGS.edgePad - leftLimit) - 1));
+    // same discipline at the page bottom: scrollHeight is an integer and
+    // Math.round rounds the span UP — a sub-pixel tail past the footer
+    // makes the whole page scrollable by a hair. teardown() already
+    // removed the previous SVG, so doc.scrollHeight is the page's own
+    // budget; the 1px slack covers every rounding mode
+    var artTopDoc = ar.top + (window.scrollY || window.pageYOffset || 0);
+    H = Math.max(1, Math.min(H, Math.floor(doc.scrollHeight - artTopDoc) - 1));
     if (W < 80 || H < 60) return;
 
     var inner = {
@@ -219,7 +228,22 @@
     svg.style.color = "inherit";
     // the divider's own color already carries its alpha — don't dim it twice
     svg.style.opacity = String(divider ? 1 : SETTINGS.opacity);
+    // self-heal: the clamps above model the layout, but fractional zoom,
+    // borders we didn't see coming, or float placement can still leave a
+    // hair of overflow. The ornament must never be what makes the page
+    // scrollable — measure the page immediately before and after the
+    // frame lands (same task, so nothing else can change layout between
+    // the reads) and shrink the frame by exactly what it grew, plus 1px.
+    var baseW = doc.scrollWidth, baseH = doc.scrollHeight;
     art.appendChild(svg);
+    var grewW = doc.scrollWidth - baseW, grewH = doc.scrollHeight - baseH;
+    if (grewW > 0 || grewH > 0) {
+      W = Math.max(1, W - grewW - 1);
+      H = Math.max(1, H - grewH - 1);
+      svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+      svg.style.width = W + "px";
+      svg.style.height = H + "px";
+    }
 
     function draw() {
       var res = null;
@@ -240,6 +264,7 @@
             detail: detail,
             depth: P.depth,
             sym: SETTINGS.sym,
+            readout: SETTINGS.readout,
             standoff: 0,
             seedProc: SETTINGS.seedProc,
             smooth: SETTINGS.smooth,

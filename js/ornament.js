@@ -5,7 +5,7 @@
   Contract: Ornament.make(width, height, seed, opts) -> { paths: [{d, sw}], meta }
   opts: { variant: frame|bands, z, inner: {x0,y0,x1,y1}, rule, dens, rate,
           standoff, padInner, padOuter, detail, smooth, organic, bodyW,
-          minlen, maxlines }
+          minlen, maxlines, readout (ray|noise) }
   padInner/padOuter: border PADDING in px — padInner grows the text hole,
   padOuter pulls the frame in; each is a number or {l,r,t,b}. The field
   fills the padded region as ONE surface (no suppression); standoff only
@@ -334,6 +334,63 @@ function genCA(w, h, seed, o){
   // swirl — and the four quarter-arcs stay equal (c = hw + hh + 2d), so
   // the folds keep their exact mirror behaviour.
   const gens = runCA(seedRow(p, ringN), gNeed);
+  // ---- readout: how a plane point finds its ring cell -----------------
+  // ray   the original — every structure radiates from one centre.
+  // noise TWO independent displacement fields, applied to both readout
+  //       coordinates:
+  //       · kOff (angular): bends where around the ring a point reads.
+  //         Alone it only makes the rays wavy — the concentric
+  //         generation bands still radiate from the text.
+  //       · gOff (radial, amplitude in GENERATIONS): scrambles WHICH
+  //         generation a point reads. This is what distributes the
+  //         lace — no banding, no centre, young and old texture
+  //         interleaved in patches across the frame.
+  //       Guarantees both: zero mean (no net rotation — the old swirl
+  //       rail cannot regrow; no net generation drift either), and
+  //       mirror discipline — the arc coordinate flips sign under a
+  //       mirror, so kOff is ODD under every fold axis; the generation
+  //       coordinate is a distance (even), so gOff is EVEN. Mirror
+  //       pairs then read the same cell and sym survives both warps.
+  //       Slope budgets (kOff: S ring-px per plane-px; gOff: SG
+  //       generations per plane-px) keep the meander scale-free and
+  //       neighbouring nodes never reading far-apart cells — contours
+  //       stay chainable. Wavelength discipline as everywhere.
+  const READOUTS = ['ray', 'noise'];
+  const readout = READOUTS.includes(o.readout) ? o.readout : pick(r, READOUTS);
+  let kOff = null, gOff = null;
+  if (readout === 'noise'){
+    const mkField = (seed, octdef, S) => {
+      const octs = octdef.map(([lo, hi, sh]) => {
+        const wl = rrange(r, lo, hi);
+        return { wl, m: Math.max(3, Math.round(wl)), k: sh * rrange(r, 0.6, 1.4) };
+      });
+      const ksum = octs.reduce((s, t) => s + t.k, 0);
+      for (const t of octs) t.a = t.wl * t.k * (S / ksum);
+      return (x, y) => {
+        let v = 0;
+        for (const t of octs){
+          const fx = x / t.wl, fy = y / t.wl;
+          const xi = Math.floor(fx), yi = Math.floor(fy);
+          const tx = sstep01(fx - xi), ty = sstep01(fy - yi);
+          const g = (a, b) => ihash(seed + a * 7349 + t.m, seed + b * 2657 - t.m);
+          const v00 = g(xi, yi), v10 = g(xi + 1, yi), v01 = g(xi, yi + 1), v11 = g(xi + 1, yi + 1);
+          v += t.a * (2 * ((v00 * (1 - tx) + v10 * tx) * (1 - ty) + (v01 * (1 - tx) + v11 * tx) * ty) - 1);
+        }
+        return v;
+      };
+    };
+    const kbase = mkField((r() * 1e9) | 0, [[500, 900, 1], [120, 300, 0.55], [26, 80, 0.3]], rrange(r, 0.3, 0.75));
+    const gbase = mkField((r() * 1e9) | 0, [[260, 700, 1], [80, 220, 0.5], [26, 70, 0.25]], rrange(r, 0.06, 0.22));
+    const mx2 = 2 * midX, my2 = 2 * midY;
+    kOff = sym === 'v'    ? (x, y) => kbase(x, y) - kbase(mx2 - x, y)
+         : sym === 'h'    ? (x, y) => kbase(x, y) - kbase(x, my2 - y)
+         : sym === 'both' ? (x, y) => kbase(x, y) - kbase(mx2 - x, y) - kbase(x, my2 - y) + kbase(mx2 - x, my2 - y)
+         : kbase;
+    gOff = sym === 'v'    ? (x, y) => 0.5 * (gbase(x, y) + gbase(mx2 - x, y))
+         : sym === 'h'    ? (x, y) => 0.5 * (gbase(x, y) + gbase(x, my2 - y))
+         : sym === 'both' ? (x, y) => 0.25 * (gbase(x, y) + gbase(mx2 - x, y) + gbase(x, my2 - y) + gbase(mx2 - x, my2 - y))
+         : gbase;
+  }
   // Ring position = where the RAY from the text centre through (x, y)
   // leaves the text rectangle. Constant-position curves are straight rays,
   // so the automaton's structures stay put and grow radially away from the
@@ -351,12 +408,15 @@ function genCA(w, h, seed, o){
       return sy <= 0 ? fx - midX : 2 * (hw + hh) - (fx - midX);
     return sx > 0 ? hw + (fy - cy0) : -(hw + (fy - cy0));
   };
-  // folded arc position — folds sit on fixed rays, not ring diagonals
+  // folded arc position — folds sit on fixed rays, not ring diagonals;
+  // the noise readout warps the arc BEFORE the fold, so mirror pairs
+  // (odd warp) fold to the same cell
+  const ringAt = kOff ? (x, y) => footArc(x, y) + kOff(x, y) : footArc;
   const foldAt = (x, y) => {
     const c = hw + hh + 1e-9;                       // quarter-arc of the TEXT ring (constant)
     const per = sym === 'both' ? 2 * c : 4 * c;     // texture repeat around the ring
     const span = sym === 'both' ? c : sym === 'none' ? 4 * c : 2 * c;
-    let m = (sym === 'h' ? footArc(x, y) - c : footArc(x, y)) % per;
+    let m = (sym === 'h' ? ringAt(x, y) - c : ringAt(x, y)) % per;
     if (m < 0) m += per;
     return m < span ? m : 2 * span - m;             // mirror fold ('none' = plain arc)
   };
@@ -366,10 +426,16 @@ function genCA(w, h, seed, o){
     const row = new Array(nx);
     for (let i = 0; i < nx; i++){
       const x = gx(i);
-      const kk = Math.min(ringN - 1, Math.round(foldAt(x, y) / cell));
+      // wrap, not clamp: the row is a palindrome (row[i] = row[n−1−i]),
+      // so cell 0 ≡ cell ringN−1 and the mod never changes a value the
+      // old clamp read — it just survives the warp's excursions
+      const kk = ((Math.round(foldAt(x, y) / cell) % ringN) + ringN) % ringN;
       const dx = Math.max(inner.x0 - x, 0, x - inner.x1);
       const dy = Math.max(inner.y0 - y, 0, y - inner.y1);
-      const gen = fold(Math.round(Math.max(dx, dy) / cell));
+      const dg = Math.max(dx, dy) / cell;
+      // radial warp clamps at 0: the innermost lace stays youngest at
+      // the hole (the ornament still grows from the words, just unevenly)
+      const gen = fold(gOff ? Math.max(0, Math.round(dg + gOff(x, y))) : Math.round(dg));
       row[i] = gens[Math.min(gen, gNeed - 1)][((kk % ringN) + ringN) % ringN] - 0.5;
     }
     V.push(row);
@@ -464,7 +530,7 @@ function genCA(w, h, seed, o){
   const qlen = L => Math.round((() => { let s = 0; for (let i = 1; i < L.pts.length; i++) s += Math.hypot(L.pts[i][0] - L.pts[i-1][0], L.pts[i][1] - L.pts[i-1][1]); return s; })() * 8) / 8;
   const minLenPx = cell * (o.minlen != null ? o.minlen : 2.2);
   lines = lines.filter(L => qlen(L) > minLenPx && L.pts.length > 3);
-  if (!lines.length) return { paths, meta: `rule ${rule} · seed ${proc} · phase ${p.toFixed(2)} · resting at this depth` };
+  if (!lines.length) return { paths, meta: `rule ${rule} · seed ${proc} · read ${readout} · phase ${p.toFixed(2)} · resting at this depth` };
   const lens = lines.map(qlen);
   const sorted = [...lens].sort((a, b) => b - a);
   // twin-safe ceiling: admit whole groups of equal length (mirror twins
@@ -499,7 +565,7 @@ function genCA(w, h, seed, o){
     const pts = ox || oy ? L.pts.map(p => [p[0] + ox, p[1] + oy]) : L.pts;   // undo the padding shift
     paths.push({ d: per === 0 ? dPts(pts, L.closed) : dPts(crSample(pts, L.closed, 0.8, per), L.closed), sw });
   });
-  return { paths, meta: `rule ${rule} · seed ${proc} · phase ${p.toFixed(2)} · ${paths.length} lines · strip ${strip.toFixed(0)}px · cell ${cell.toFixed(1)}${padTag}` };
+  return { paths, meta: `rule ${rule} · seed ${proc} · read ${readout} · phase ${p.toFixed(2)} · ${paths.length} lines · strip ${strip.toFixed(0)}px · cell ${cell.toFixed(1)}${padTag}` };
 }
 
 
