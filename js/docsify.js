@@ -70,7 +70,7 @@ function setupSidebar() {
 
   if (sidebarToggle) {
     if (!sidebar.id) sidebar.id = "site-sidebar";
-    sidebarToggle.replaceChildren("📋");
+    sidebarToggle.replaceChildren("📄");
     sidebarToggle.setAttribute("aria-label", "Open sidebar");
     sidebarToggle.setAttribute("aria-controls", sidebar.id);
     sidebarToggle.setAttribute("aria-expanded", "false");
