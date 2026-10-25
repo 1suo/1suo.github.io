@@ -335,8 +335,11 @@ body .sidebar {
 .sidebar .search .input-wrap button,
 .sidebar-toggle {
   align-items: center;
-  color: var(--sidebar-background);
-  background: var(--body-color);
+  /* color: var(--sidebar-background); */
+  /* background: var(--body-color); */
+  background: color-mix(in srgb, var(--body-color) 20%, var(--sidebar-background));
+  color: var(--body-color);
+  /* background: #777777; */
   /* background: transparent; */
   border: 0;
   /* color: inherit; */
