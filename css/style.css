@@ -694,13 +694,13 @@ dl dd + dt {
   height: 11px;
 }
 ::-webkit-scrollbar-thumb {
-  border-radius: 8px;
+  /* border-radius: 8px; */
   border: 6px solid transparent;
   background-color: #77777744;
 }
 ::-webkit-scrollbar-track {
   background-color: transparent;
-  border-radius: 8px;
+  /* border-radius: 8px; */
 }
 
 /* Reduced motion */
