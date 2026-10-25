@@ -58,6 +58,7 @@ function chainSegs(segs, mirrorX = Infinity){
   const map = new Map();
   segs.forEach((s, i) => { for (const end of [0, 1]) { const k = nkey(s[end]); if (!map.has(k)) map.set(k, []); map.get(k).push({ i, end }); } });
   const used = new Array(segs.length).fill(false);
+  const cands = [];
   const out = [];
   for (let i = 0; i < segs.length; i++){
     if (used[i]) continue;
@@ -68,14 +69,24 @@ function chainSegs(segs, mirrorX = Infinity){
     let closed = false;
     while (guard--){
       const k = nkey(line[line.length - 1]);
-      let cands = (map.get(k) || []).filter(c => !used[c.i]);
-      if (!cands.length) break;
-      if (cands.length > 1)
+      const bucket = map.get(k);
+      if (!bucket) break;
+      // first unused candidate — the common case is a lone one, and the
+      // sort below only ever matters when several ends share the bucket
+      let c = null;
+      for (let q = 0; q < bucket.length; q++)
+        if (!used[bucket[q].i]){ if (c) { c = null; break; } c = bucket[q]; }
+      if (!c){
+        if (bucket.length < 2) break;             // one end, already used
+        cands.length = 0;
+        for (let q = 0; q < bucket.length; q++) if (!used[bucket[q].i]) cands.push(bucket[q]);
+        if (!cands.length) break;
         cands.sort((A, B) => {
           const a = farKey(A), b = farKey(B);
           return a[0] - b[0] || a[1] - b[1];
         });
-      const c = cands[0];
+        c = cands[0];
+      }
       used[c.i] = true;
       const nxt = segs[c.i][c.end ? 0 : 1];
       if (nkey(nxt) === k0) { closed = true; break; }
@@ -183,7 +194,14 @@ function genCA(w, h, seed, o){
     ? Math.max(2.4, Math.min(10, o.detail))
     : Math.max(4, Math.min(10, strip / 3.4));
   const nx = Math.floor(w / cell) + 2, ny = Math.floor(h / cell) + 2;
-  const gx = i => Math.min(w, i * (w / (nx - 1))), gy = j => Math.min(h, j * (h / (ny - 1)));
+  // node coordinates precomputed once — gx/gy were pure functions of the
+  // index, evaluated nx·ny times per pass (field, window, crossings)
+  const XS = new Float64Array(nx), YS = new Float64Array(ny);
+  {
+    const sx = w / (nx - 1), sy = h / (ny - 1);
+    for (let i = 0; i < nx; i++) XS[i] = Math.min(w, i * sx);
+    for (let j = 0; j < ny; j++) YS[j] = Math.min(h, j * sy);
+  }
 
   // ---- the field IS a cellular automaton (Wolfram rule on a cylinder) ----
   // z does NOT advance the generation window — that would merely pan the
@@ -320,7 +338,11 @@ function genCA(w, h, seed, o){
   // the young regime in concentric bands. Default Infinity = never folds,
   // so default genomes are bit-identical to the original generator.
   const depth = o.depth != null ? Math.max(8, Math.round(o.depth)) : Infinity;
-  const fold = g => { const m = g % (2 * depth); return m < depth ? m : 2 * depth - m; };
+  // the depth fold, inlined in int32 in the node loop below (the index it
+  // folds is a small integer; fmod of two integers is the integer
+  // remainder, so the closure it replaces agreed bit for bit)
+  const foldInf = depth === Infinity;
+  const depth2 = foldInf ? 0 : 2 * depth;
   const gNeed = Math.min(Math.ceil(Math.hypot(w, h) / 2 / cell) + 2, depth + 2);
   // ONE cylinder, read around the ring — L∞ (square) rings. The field is
   // a single surface; a closed ring must wrap the cylinder somewhere, and
@@ -377,47 +399,165 @@ function genCA(w, h, seed, o){
   //       mirrored cells, as with noise.
   const READOUTS = ['ray', 'noise', 'shards'];
   const readout = READOUTS.includes(o.readout) ? o.readout : pick(r, READOUTS);
-  let kOff = null, gOff = null;
+  // the two warp fields, evaluated ONTO THE GRID up front (null = ray):
+  // the field loop below reads them by node index. Noise fields are
+  // separable (see mkField.grid); shards are cheap per node and are
+  // sampled directly. Both produce exactly the values the per-node
+  // closures they replace produced.
+  let KOFF = null, GV = null;
   if (readout === 'noise'){
-    const mkField = (seed, octdef, S) => {
+    // mkField precomputes each octave's value-noise LATTICE once (ihash
+    // per lattice corner, corners shared by every node in a cell) and the
+    // returned sampler only interpolates — the per-node ihash storm of
+    // the original inline form was the generator's dominant cost. Same
+    // rolls, same ihash arguments, same interpolation arithmetic: the
+    // output is bit-identical.
+    const mkField = (seed, octdef, S, xlo, xhi, ylo, yhi) => {
       const octs = octdef.map(([lo, hi, sh]) => {
         const wl = rrange(r, lo, hi);
         return { wl, m: Math.max(3, Math.round(wl)), k: sh * rrange(r, 0.6, 1.4) };
       });
       const ksum = octs.reduce((s, t) => s + t.k, 0);
       for (const t of octs) t.a = t.wl * t.k * (S / ksum);
-      return (x, y) => {
+      // lattice covers [xlo,xhi]×[ylo,yhi] plus one ring of corners; the
+      // sampler below falls back to a direct ihash (the original inline
+      // form) if a query ever lands outside — unreachable, but never wrong
+      for (const t of octs){
+        t.x0 = Math.floor(xlo / t.wl) - 1; t.y0 = Math.floor(ylo / t.wl) - 1;
+        const x1 = Math.floor(xhi / t.wl) + 1, y1 = Math.floor(yhi / t.wl) + 1;
+        t.w = x1 - t.x0 + 1;
+        const L = new Float64Array(t.w * (y1 - t.y0 + 1));
+        for (let b = 0; b * t.w < L.length; b++)
+          for (let a = 0; a < t.w; a++)
+            L[b * t.w + a] = ihash(seed + (a + t.x0) * 7349 + t.m, seed + (b + t.y0) * 2657 - t.m);
+        t.L = L;
+      }
+      // field(x, y) — the general sampler (kept for reference parity; the
+      // field loop below only reads grids). Interpolation arithmetic is the
+      // original's, term for term.
+      const field = (x, y) => {
         let v = 0;
-        for (const t of octs){
-          const fx = x / t.wl, fy = y / t.wl;
+        for (let t = 0; t < octs.length; t++){
+          const o = octs[t];
+          const wl = o.wl, L = o.L, W = o.w;
+          const fx = x / wl, fy = y / wl;
           const xi = Math.floor(fx), yi = Math.floor(fy);
-          const tx = sstep01(fx - xi), ty = sstep01(fy - yi);
-          const g = (a, b) => ihash(seed + a * 7349 + t.m, seed + b * 2657 - t.m);
-          const v00 = g(xi, yi), v10 = g(xi + 1, yi), v01 = g(xi, yi + 1), v11 = g(xi + 1, yi + 1);
-          v += t.a * (2 * ((v00 * (1 - tx) + v10 * tx) * (1 - ty) + (v01 * (1 - tx) + v11 * tx) * ty) - 1);
+          // frac parts are in [0,1) by construction — the clamp inside
+          // sstep01 is a no-op here, so the hermite is inlined without it
+          const ftx = fx - xi, fty = fy - yi;
+          const tx = ftx * ftx * (3 - 2 * ftx), ty = fty * fty * (3 - 2 * fty);
+          const ax = xi - o.x0, ay = yi - o.y0;
+          let v00, v10, v01, v11;
+          if (ax >= 0 && ax + 1 < W && ay >= 0 && (ay + 1) * W <= L.length){
+            const b = ay * W + ax;
+            v00 = L[b]; v10 = L[b + 1]; v01 = L[b + W]; v11 = L[b + W + 1];
+          } else { // unreachable — queries provably stay inside the lattice
+            v00 = ihash(seed + xi * 7349 + o.m, seed + yi * 2657 - o.m); // pragma: nocov
+            v10 = ihash(seed + (xi + 1) * 7349 + o.m, seed + yi * 2657 - o.m); // pragma: nocov
+            v01 = ihash(seed + xi * 7349 + o.m, seed + (yi + 1) * 2657 - o.m); // pragma: nocov
+            v11 = ihash(seed + (xi + 1) * 7349 + o.m, seed + (yi + 1) * 2657 - o.m); // pragma: nocov
+          }
+          v += o.a * (2 * ((v00 * (1 - tx) + v10 * tx) * (1 - ty) + (v01 * (1 - tx) + v11 * tx) * ty) - 1);
         }
         return v;
       };
+      // field.grid(xs, ys) — the same field on the node grid, computed
+      // SEPARABLY: the bilinear form is (v00·(1−tx)+v10·tx)·(1−ty) +
+      // (v01·(1−tx)+v11·tx)·ty, so each lattice row can first be
+      // interpolated at the grid COLUMNS (one pass per row), and each node
+      // then blends the two rows it straddles. Every division, floor and
+      // hermite runs once per column/row per octave instead of once per
+      // node; the arithmetic per node is literally the same expression on
+      // the same operands, so results are bit-identical to field(x, y).
+      // Octave contributions still accumulate in octave order.
+      field.grid = (xs, ys) => {
+        const out = new Float64Array(nx * ny);
+        for (let t = 0; t < octs.length; t++){
+          const o = octs[t], wl = o.wl, L = o.L, W = o.w;
+          const xi = new Int32Array(nx), tx = new Float64Array(nx), otx = new Float64Array(nx);
+          for (let i = 0; i < nx; i++){
+            const fx = xs[i] / wl, xf = Math.floor(fx), f = fx - xf;
+            xi[i] = xf - o.x0;
+            const hx = f * f * (3 - 2 * f);
+            tx[i] = hx; otx[i] = 1 - hx;
+          }
+          const yi = new Int32Array(ny), ty = new Float64Array(ny), oty = new Float64Array(ny);
+          for (let j = 0; j < ny; j++){
+            const fy = ys[j] / wl, yf = Math.floor(fy), f = fy - yf;
+            yi[j] = yf - o.y0;
+            const hy = f * f * (3 - 2 * f);
+            ty[j] = hy; oty[j] = 1 - hy;
+          }
+          // rolling pair of row buffers: lattice row indices are
+          // non-decreasing along j, so at most two rows are ever live
+          let ra = -2, rb = -2;
+          let B0 = new Float64Array(nx), B1 = new Float64Array(nx);
+          const rowAt = (r, buf) => {
+            const o0 = r * W;
+            for (let i = 0; i < nx; i++){
+              const b = o0 + xi[i];
+              buf[i] = L[b] * otx[i] + L[b + 1] * tx[i];
+            }
+          };
+          for (let j = 0; j < ny; j++){
+            const r0 = yi[j], r1 = r0 + 1;
+            if (r0 !== ra){
+              if (r0 === rb){ const tmp = B0; B0 = B1; B1 = tmp; ra = rb; rb = -2; }
+              else { rowAt(r0, B0); ra = r0; rb = -2; }
+            }
+            if (r1 !== rb){ rowAt(r1, B1); rb = r1; }
+            const oj = j * nx, omt = oty[j], tj = ty[j], a = o.a;
+            for (let i = 0; i < nx; i++)
+              out[oj + i] += a * (2 * (B0[i] * omt + B1[i] * tj) - 1);
+          }
+        }
+        return out;
+      };
+      return field;
     };
     // slope budgets are genome knobs: o.kSlope (ring-px) / o.gSlope
     // (generations) per plane-px, null = the internal rolls. Seeds are
     // drawn in the same positions as the original inline rolls, so
     // pinned and default genomes share one r-stream shape
+    const mx2 = 2 * midX, my2 = 2 * midY;
+    // every coordinate the mirrored samplers below can query: x and its
+    // mirror mx2−x, y and my2−y — the lattices must cover the union
+    const mxv = sym === 'v' || sym === 'both', myv = sym === 'h' || sym === 'both';
+    const qx0 = Math.min(0, mxv ? mx2 - w : 0), qx1 = Math.max(w, mxv ? mx2 : w);
+    const qy0 = Math.min(0, myv ? my2 - h : 0), qy1 = Math.max(h, myv ? my2 : h);
     const kW = (r() * 1e9) | 0;
     const kS = o.kSlope != null ? +o.kSlope : rrange(r, 0.3, 0.75);
-    const kbase = mkField(kW, [[500, 900, 1], [120, 300, 0.55], [26, 80, 0.3]], kS);
+    const kbase = mkField(kW, [[500, 900, 1], [120, 300, 0.55], [26, 80, 0.3]], kS, qx0, qx1, qy0, qy1);
     const gW = (r() * 1e9) | 0;
     const gS = o.gSlope != null ? +o.gSlope : rrange(r, 0.06, 0.22);
-    const gbase = mkField(gW, [[260, 700, 1], [80, 220, 0.5], [26, 70, 0.25]], gS);
-    const mx2 = 2 * midX, my2 = 2 * midY;
-    kOff = sym === 'v'    ? (x, y) => kbase(x, y) - kbase(mx2 - x, y)
-         : sym === 'h'    ? (x, y) => kbase(x, y) - kbase(x, my2 - y)
-         : sym === 'both' ? (x, y) => kbase(x, y) - kbase(mx2 - x, y) - kbase(x, my2 - y) + kbase(mx2 - x, my2 - y)
-         : kbase;
-    gOff = sym === 'v'    ? (x, y) => 0.5 * (gbase(x, y) + gbase(mx2 - x, y))
-         : sym === 'h'    ? (x, y) => 0.5 * (gbase(x, y) + gbase(x, my2 - y))
-         : sym === 'both' ? (x, y) => 0.25 * (gbase(x, y) + gbase(mx2 - x, y) + gbase(x, my2 - y) + gbase(mx2 - x, my2 - y))
-         : gbase;
+    const gbase = mkField(gW, [[260, 700, 1], [80, 220, 0.5], [26, 70, 0.25]], gS, qx0, qx1, qy0, qy1);
+    // mirror axes as coordinate arrays, so mirrored reads go through the
+    // same separable grid path
+    const MXS = new Float64Array(nx), MYS = new Float64Array(ny);
+    if (mxv) for (let i = 0; i < nx; i++) MXS[i] = mx2 - XS[i];
+    if (myv) for (let j = 0; j < ny; j++) MYS[j] = my2 - YS[j];
+    // the warp grids, composed per symmetry exactly as the warp closures
+    // they replace (odd k-warp, even g-warp — see the discipline notes
+    // above); element-wise ops in the same order the closures used them
+    const zip2 = (A, B, f) => { const O = new Float64Array(A.length); for (let n = 0; n < A.length; n++) O[n] = f(A[n], B[n]); return O; };
+    if (sym === 'v'){
+      KOFF = zip2(kbase.grid(XS, YS), kbase.grid(MXS, YS), (a, b) => a - b);
+      GV = zip2(gbase.grid(XS, YS), gbase.grid(MXS, YS), (a, b) => 0.5 * (a + b));
+    } else if (sym === 'h'){
+      KOFF = zip2(kbase.grid(XS, YS), kbase.grid(XS, MYS), (a, b) => a - b);
+      GV = zip2(gbase.grid(XS, YS), gbase.grid(XS, MYS), (a, b) => 0.5 * (a + b));
+    } else if (sym === 'both'){
+      const k1 = kbase.grid(XS, YS), k2 = kbase.grid(MXS, YS), k3 = kbase.grid(XS, MYS), k4 = kbase.grid(MXS, MYS);
+      const g1 = gbase.grid(XS, YS), g2 = gbase.grid(MXS, YS), g3 = gbase.grid(XS, MYS), g4 = gbase.grid(MXS, MYS);
+      KOFF = new Float64Array(k1.length); GV = new Float64Array(k1.length);
+      for (let n = 0; n < k1.length; n++){
+        KOFF[n] = k1[n] - k2[n] - k3[n] + k4[n];
+        GV[n] = 0.25 * (g1[n] + g2[n] + g3[n] + g4[n]);
+      }
+    } else { // 'none' — the plain fields
+      KOFF = kbase.grid(XS, YS);
+      GV = gbase.grid(XS, YS);
+    }
   } else if (readout === 'shards'){
     // sites live on the FOLDED plane, so the partition itself mirrors;
     // dk sign-flips across each fold axis (the arc coordinate is odd
@@ -435,20 +575,32 @@ function genCA(w, h, seed, o){
       dk: Math.round(rrange(r, dkR[0], dkR[1])),
       dg: Math.round(rrange(r, dgR[0], dgR[1])),
     });
-    const shardAt = (x, y) => {
-      const qx = fw < w ? midX - Math.abs(x - midX) : x;
-      const qy = fh < h ? midY - Math.abs(y - midY) : y;
-      let best = sites[0], bd = Infinity;
-      for (const s of sites){
-        const d = (s.x - qx) * (s.x - qx) + (s.y - qy) * (s.y - qy);
-        if (d < bd){ bd = d; best = s; }
-      }
-      return best;
-    };
     const sX = x => (sym === 'v' || sym === 'both') && x >= midX ? -1 : 1;
     const sY = y => (sym === 'h' || sym === 'both') && y >= midY ? -1 : 1;
-    kOff = (x, y) => { const s = shardAt(x, y); return s.dk * cell * sX(x) * sY(y); };
-    gOff = (x, y) => shardAt(x, y).dg;
+    // one fused scan per node (kOff and gOff consult the SAME shard, so
+    // the original's two closures each re-ran the site search); the
+    // folded-plane coordinates are pure per-column/per-row functions
+    KOFF = new Float64Array(nx * ny);
+    GV = new Float64Array(nx * ny);
+    const foldX = fw < w, foldY = fh < h;
+    for (let j = 0; j < ny; j++){
+      const y = YS[j];
+      const qy = foldY ? midY - Math.abs(y - midY) : y;
+      const sy2 = sY(y);
+      for (let i = 0; i < nx; i++){
+        const x = XS[i];
+        const qx = foldX ? midX - Math.abs(x - midX) : x;
+        let best = sites[0], bd = Infinity;
+        for (let q = 0; q < sites.length; q++){
+          const s = sites[q];
+          const d = (s.x - qx) * (s.x - qx) + (s.y - qy) * (s.y - qy);
+          if (d < bd){ bd = d; best = s; }
+        }
+        const oj = j * nx + i;
+        KOFF[oj] = best.dk * cell * sX(x) * sy2;
+        GV[oj] = best.dg;
+      }
+    }
   }
   // Ring position = where the RAY from the text centre through (x, y)
   // leaves the text rectangle. Constant-position curves are straight rays,
@@ -458,84 +610,161 @@ function genCA(w, h, seed, o){
   // the ring every generation — a fixed square-swirl rail that every seed,
   // rule and density was forced to wrap along. Rays kill the rail; texture
   // magnifies projectively with distance from the text instead.
-  const footArc = (x, y) => {
-    const sx = x - midX, sy = y - midY;
-    const tx = hw / (Math.abs(sx) || 1e-9), ty = hh / (Math.abs(sy) || 1e-9);
-    const t = Math.min(tx, ty);
-    const fx = midX + t * sx, fy = midY + t * sy;   // ray's foot on the text rect
-    if (ty <= tx)                                   // leaves through top/bottom edge
-      return sy <= 0 ? fx - midX : 2 * (hw + hh) - (fx - midX);
-    return sx > 0 ? hw + (fy - cy0) : -(hw + (fy - cy0));
-  };
+  //
+  // The loop below inlines footArc with its halves cached: sx/tx are pure
+  // functions of the column, sy/ty of the row, so the two divisions run
+  // once per column/row instead of once per node. Same expressions, same
+  // operands, same order — bit-identical to the per-node function call.
+  const FSX = new Float64Array(nx), FTX = new Float64Array(nx);
+  for (let i = 0; i < nx; i++){
+    const sx = XS[i] - midX;
+    FSX[i] = sx;
+    FTX[i] = hw / (Math.abs(sx) || 1e-9);
+  }
+  const FSY = new Float64Array(ny), FTY = new Float64Array(ny);
+  for (let j = 0; j < ny; j++){
+    const sy = YS[j] - midY;
+    FSY[j] = sy;
+    FTY[j] = hh / (Math.abs(sy) || 1e-9);
+  }
+  // same caching for the generation-distance halves of the readout
+  const DXX = new Float64Array(nx), DYY = new Float64Array(ny);
+  for (let i = 0; i < nx; i++){ const x = XS[i]; DXX[i] = Math.max(inner.x0 - x, 0, x - inner.x1); }
+  for (let j = 0; j < ny; j++){ const y = YS[j]; DYY[j] = Math.max(inner.y0 - y, 0, y - inner.y1); }
   // folded arc position — folds sit on fixed rays, not ring diagonals;
   // the noise readout warps the arc BEFORE the fold, so mirror pairs
-  // (odd warp) fold to the same cell
-  const ringAt = kOff ? (x, y) => footArc(x, y) + kOff(x, y) : footArc;
-  const foldAt = (x, y) => {
-    const c = hw + hh + 1e-9;                       // quarter-arc of the TEXT ring (constant)
-    const per = sym === 'both' ? 2 * c : 4 * c;     // texture repeat around the ring
-    const span = sym === 'both' ? c : sym === 'none' ? 4 * c : 2 * c;
-    let m = (sym === 'h' ? ringAt(x, y) - c : ringAt(x, y)) % per;
-    if (m < 0) m += per;
-    return m < span ? m : 2 * span - m;             // mirror fold ('none' = plain arc)
-  };
-  let V = [];
-  for (let j = 0; j < ny; j++){
-    const y = gy(j);
-    const row = new Array(nx);
-    for (let i = 0; i < nx; i++){
-      const x = gx(i);
-      // wrap, not clamp: the row is a palindrome (row[i] = row[n−1−i]),
-      // so cell 0 ≡ cell ringN−1 and the mod never changes a value the
-      // old clamp read — it just survives the warp's excursions
-      const kk = ((Math.round(foldAt(x, y) / cell) % ringN) + ringN) % ringN;
-      const dx = Math.max(inner.x0 - x, 0, x - inner.x1);
-      const dy = Math.max(inner.y0 - y, 0, y - inner.y1);
-      const dg = Math.max(dx, dy) / cell;
-      // radial warp clamps at 0: the innermost lace stays youngest at
-      // the hole (the ornament still grows from the words, just unevenly)
-      const gen = fold(gOff ? Math.max(0, Math.round(dg + gOff(x, y))) : Math.round(dg));
-      row[i] = gens[Math.min(gen, gNeed - 1)][((kk % ringN) + ringN) % ringN] - 0.5;
-    }
-    V.push(row);
-  }
+  // (odd warp) fold to the same cell. All constants, hoisted out of the
+  // loop the closures used to live in.
+  const cArc = hw + hh + 1e-9;                     // quarter-arc of the TEXT ring (constant)
+  const perArc = sym === 'both' ? 2 * cArc : 4 * cArc; // texture repeat around the ring
+  const spanArc = sym === 'both' ? cArc : sym === 'none' ? 4 * cArc : 2 * cArc;
+  const symH = sym === 'h';
+  const hh2 = 2 * (hw + hh);
   // separable [1 2 1] blur: binary states become engraved lines. Zero passes
   // keeps the raw geometric contour — the character of the original CA lace.
+  // (Hoisted above the loop: constant per call, and the loop below fuses
+  // the window pass in when no blur follows.)
   const blurPasses = [0, 0, 1, 2][organic];
-  for (let pass = 0; pass < blurPasses; pass++){
-    const H = V.map(row => row.map((v, i) => (row[Math.max(0, i - 1)] + 2 * v + row[Math.min(nx - 1, i + 1)]) / 4));
-    V = [];
-    for (let j = 0; j < ny; j++){
-      const a = H[Math.max(0, j - 1)], b = H[j], c = H[Math.min(ny - 1, j + 1)];
-      V.push(b.map((v, i) => (a[i] + 2 * v + c[i]) / 4));
-    }
+  // the automaton as one flat byte grid — hot per-node reads become one
+  // typed-array index instead of a double array lookup
+  const GEN = new Uint8Array(gNeed * ringN);
+  for (let g = 0; g < gNeed; g++){
+    const S = gens[g];
+    for (let q = 0; q < ringN; q++) GEN[g * ringN + q] = S[q];
   }
-
-
-  // window: force the field below the isolevel near every boundary, so all
-  // contours close inside the strip with a clean standoff — nothing touches
-  // the text, nothing touches the frame, no dangling ends, ever. Spacing is
-  // NOT done here (see padding above); this only seals the edges.
-  const smoo = t => t >= 1 ? 1 : t * t * (3 - 2 * t);
-  const dIn = (x, y) => {
-    const dx = Math.max(inner.x0 - x, 0, x - inner.x1);
-    const dy = Math.max(inner.y0 - y, 0, y - inner.y1);
-    return Math.hypot(dx, dy);
-  };
-  const G = [];
   // isolevel sits at +0.03, not 0: the blur's discrete arithmetic produces
   // exact zeros often, and a zero node puts crossings exactly ON the node —
   // several edges then share one chain key, spawning degenerate segments
   // and asymmetric pairing. Off the node, every crossing is its own point.
   const LEVEL = 0.03;
+  const NNODE = nx * ny;
+  let V = new Float64Array(NNODE);
+  const G = new Float64Array(NNODE);
   for (let j = 0; j < ny; j++){
-    const row = [];
+    const sy = FSY[j], ty = FTY[j], dy = DYY[j];
+    const gvRow = GV ? j * nx : 0, rowBase = j * nx, y = YS[j];
     for (let i = 0; i < nx; i++){
-      const x = gx(i), y = gy(j);
-      const win = Math.min(smoo(Math.min(x, y, w - x, h - y) / margin), smoo(dIn(x, y) / margin));
-      row.push((win >= 1 ? V[j][i] : V[j][i] - (1 - win) * 0.9) - LEVEL);
+      // footArc(XS[i], YS[j]) — ray's foot on the text rect
+      const sx = FSX[i], tx = FTX[i];
+      const t = Math.min(tx, ty);
+      const fx = midX + t * sx, fy = midY + t * sy;
+      let arc;
+      if (ty <= tx)                                 // leaves through top/bottom edge
+        arc = sy <= 0 ? fx - midX : hh2 - (fx - midX);
+      else
+        arc = sx > 0 ? hw + (fy - cy0) : -(hw + (fy - cy0));
+      if (KOFF) arc += KOFF[gvRow + i];
+      // foldAt: wrap into the ring period, mirror into the span. The
+      // bare-mod fast paths are exact: for X in [per, 2·per) fmod(X, per)
+      // is X−per (Sterbenz-exact subtract), for X in (−per, 0) fmod
+      // returns X itself and the code adds per once — the identical add.
+      // Only genuinely out-of-range excursions (the warp's) pay the mod.
+      let m = symH ? arc - cArc : arc;
+      if (m < 0){
+        if (m > -perArc) m += perArc;
+        else { m %= perArc; if (m < 0) m += perArc; }
+      } else if (m >= perArc){
+        if (m < 2 * perArc) m -= perArc;
+        else m %= perArc;
+      }
+      const foldV = m < spanArc ? m : 2 * spanArc - m;   // mirror fold ('none' = plain arc)
+      // wrap, not clamp: the row is a palindrome (row[i] = row[n−1−i]),
+      // so cell 0 ≡ cell ringN−1 and the mod never changes a value the
+      // old clamp read — it just survives the warp's excursions. The
+      // round() result is a small integer: int32 arithmetic is exact
+      // where the double fmods were exact, so the wrap is bit-identical.
+      let kk = Math.round(foldV / cell) | 0;
+      kk = ((kk % ringN) + ringN) % ringN;
+      const dg = Math.max(DXX[i], dy) / cell;
+      // radial warp clamps at 0: the innermost lace stays youngest at
+      // the hole (the ornament still grows from the words, just unevenly).
+      // Math.round yields a small integer, so the depth fold runs in
+      // int32 — identical to fold() on integral doubles (fmod of two
+      // integers is the integer remainder).
+      const genRaw = (GV ? Math.max(0, Math.round(dg + GV[gvRow + i])) : Math.round(dg)) | 0;
+      let gen;
+      if (foldInf) gen = genRaw;
+      else {
+        const m2 = genRaw % depth2;
+        gen = m2 < depth ? m2 : depth2 - m2;
+      }
+      const n = rowBase + i;
+      const val = GEN[Math.min(gen, gNeed - 1) * ringN + kk] - 0.5;
+      V[n] = val;
+      // window: force the field below the isolevel near every boundary, so
+      // all contours close inside the strip with a clean standoff — nothing
+      // touches the text, nothing touches the frame, no dangling ends, ever.
+      // Spacing is NOT done here (see padding above); this only seals the
+      // edges. Fused into the node pass when no blur follows (the common
+      // raw/crisp styles); the blurred styles window separately below.
+      if (!blurPasses){
+        const x = XS[i], dx = DXX[i];
+        // dIn: only the four corner regions of the box have both offsets
+        // nonzero; everywhere else one is 0 and hypot(x, 0) = |x| exactly,
+        // so the hypot (measurably the slow call here) is skipped for most
+        // nodes with bit-identical results
+        const dI = dx === 0 || dy === 0 ? dx + dy : Math.hypot(dx, dy);
+        const tA = Math.min(x, y, w - x, h - y) / margin;
+        const sA = tA >= 1 ? 1 : tA * tA * (3 - 2 * tA);
+        const tB = dI / margin;
+        const sB = tB >= 1 ? 1 : tB * tB * (3 - 2 * tB);
+        const win = Math.min(sA, sB);
+        G[n] = (win >= 1 ? val : val - (1 - win) * 0.9) - LEVEL;
+      }
     }
-    G.push(row);
+  }
+  for (let pass = 0; pass < blurPasses; pass++){
+    const H = new Float64Array(NNODE);
+    for (let j = 0; j < ny; j++){
+      const rb = j * nx;
+      for (let i = 0; i < nx; i++){
+        const im = Math.max(0, i - 1), ip = Math.min(nx - 1, i + 1);
+        H[rb + i] = (V[rb + im] + 2 * V[rb + i] + V[rb + ip]) / 4;
+      }
+    }
+    const N = new Float64Array(NNODE);
+    for (let j = 0; j < ny; j++){
+      const rb = j * nx, rm = Math.max(0, j - 1) * nx, rp = Math.min(ny - 1, j + 1) * nx;
+      for (let i = 0; i < nx; i++)
+        N[rb + i] = (H[rm + i] + 2 * H[rb + i] + H[rp + i]) / 4;
+    }
+    V = N;
+  }
+  if (blurPasses){
+    for (let j = 0; j < ny; j++){
+      const rb = j * nx, y = YS[j], dy = DYY[j];
+      for (let i = 0; i < nx; i++){
+        const x = XS[i], dx = DXX[i];
+        const dI = dx === 0 || dy === 0 ? dx + dy : Math.hypot(dx, dy);
+        const tA = Math.min(x, y, w - x, h - y) / margin;
+        const sA = tA >= 1 ? 1 : tA * tA * (3 - 2 * tA);
+        const tB = dI / margin;
+        const sB = tB >= 1 ? 1 : tB * tB * (3 - 2 * tB);
+        const win = Math.min(sA, sB);
+        const v = V[rb + i];
+        G[rb + i] = (win >= 1 ? v : v - (1 - win) * 0.9) - LEVEL;
+      }
+    }
   }
 
   // canonical edge crossings: each grid edge's crossing is computed exactly
@@ -543,23 +772,26 @@ function genCA(w, h, seed, o){
   // drift, no chain-pairing divergence between the two sides of the frame)
   const hE = [], vE = [];
   for (let j = 0; j < ny; j++){ hE.push(new Array(nx).fill(null)); if (j < ny - 1) vE.push(new Array(nx).fill(null)); }
-  for (let j = 0; j < ny; j++)
+  for (let j = 0; j < ny; j++){
+    const Gj = j * nx, yj = YS[j], hEj = hE[j], vEj = j < ny - 1 ? vE[j] : null, yj1 = j < ny - 1 ? YS[j + 1] : 0, Gj1 = Gj + nx;
     for (let i = 0; i < nx; i++){
-      const a = G[j][i];
+      const a = G[Gj + i];
       if (i < nx - 1){
-        const b = G[j][i + 1];
-        if ((a > 0) !== (b > 0)){ const t = a / (a - b); hE[j][i] = [gx(i) + (gx(i + 1) - gx(i)) * t, gy(j)]; }
+        const b = G[Gj + i + 1];
+        if ((a > 0) !== (b > 0)){ const t = a / (a - b); hEj[i] = [XS[i] + (XS[i + 1] - XS[i]) * t, yj]; }
       }
-      if (j < ny - 1){
-        const d = G[j + 1][i];
-        if ((a > 0) !== (d > 0)){ const t = a / (a - d); vE[j][i] = [gx(i), gy(j) + (gy(j + 1) - gy(j)) * t]; }
+      if (vEj){
+        const d = G[Gj1 + i];
+        if ((a > 0) !== (d > 0)){ const t = a / (a - d); vEj[i] = [XS[i], yj + (yj1 - yj) * t]; }
       }
     }
+  }
   // marching squares at 0; saddles by centre value
   const segs = [];
   for (let j = 0; j < ny - 1; j++)
     for (let i = 0; i < nx - 1; i++){
-      const a = G[j][i], b = G[j][i + 1], c = G[j + 1][i + 1], d = G[j + 1][i];
+      const rb = j * nx, rb1 = rb + nx;
+      const a = G[rb + i], b = G[rb + i + 1], c = G[rb1 + i + 1], d = G[rb1 + i];
       const idx = (a > 0 ? 1 : 0) | (b > 0 ? 2 : 0) | (c > 0 ? 4 : 0) | (d > 0 ? 8 : 0);
       if (idx === 0 || idx === 15) continue;
       const T = hE[j][i], R = vE[j][i + 1], B = hE[j + 1][i], L = vE[j][i];

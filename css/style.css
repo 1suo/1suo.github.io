@@ -15,7 +15,7 @@ samp {
 }
 
 footer {
-  font-family: "Roboto Mono", monospace;
+  font-family: "Roboto", monospace;
 }
 
 :focus-visible {
@@ -42,9 +42,53 @@ body .markdown-section {
   padding-left: 0.75rem;
   padding-right: 0.75rem;
   padding-top: 10rem;
+  /* Tokens with no break opportunities (long links, bare URLs, hashes)
+     must wrap at the column edge instead of overflowing it. Code blocks
+     keep their horizontal scroller (awsm's pre { overflow-x: auto }). */
+  overflow-wrap: anywhere;
+}
+
+body .markdown-section pre {
+  overflow-wrap: normal;
 }
 body .content {
   margin-left: 332px;
+}
+
+/* Paginated newspaper columns — js/columns.js builds screen-tall rows
+   (.mrow) of fixed-measure columns (.mcol) sharing one grid, and sets
+   each column's width/height inline. Below the wide-screen threshold
+   the script leaves the article untouched. The gap here must match GAP
+   in js/columns.js. */
+
+body .markdown-section .mrow {
+  display: flex;
+  gap: 4rem;
+  justify-content: center; /* ragged last row: center its leftover columns */
+  /* 1.5× the column gutter between rows, split around a hairline in
+     ornament ink (currentColor tracks the theme automatically). */
+  margin-bottom: 3rem;
+  padding-bottom: 3rem;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+}
+
+body .markdown-section .mrow:last-of-type {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+body .markdown-section .mcol {
+  flex: none;
+  min-width: 0;
+}
+
+body .markdown-section .mcol > :first-child {
+  margin-top: 0;
+}
+
+body .markdown-section .mcol > :last-child {
+  margin-bottom: 0;
 }
 
 h1,
@@ -62,7 +106,7 @@ h6 {
 }
 
 code {
-  border-radius: 4px;
+  /* border-radius: 4px; */
   font-size: 1rem;
   padding: 0.1rem 0.4rem;
   margin: 0.3rem;
@@ -73,7 +117,7 @@ code {
 pre {
   padding: 1rem 1.5rem;
   background: none;
-  border-radius: 8px;
+  /* border-radius: 8px; */
   background-color: #77777733;
   opacity: 0.9;
 }
@@ -157,7 +201,7 @@ pre code {
   font-style: italic;
 }
 blockquote {
-  border-radius: 8px;
+  /* border-radius: 8px; */
   background-color: #77777733;
   opacity: 0.9;
   /* font-style: italic; */
@@ -228,7 +272,7 @@ mark {
   background-color: color-mix(in srgb, var(--link-color) 12%, transparent);
   color: var(--link-color);
   padding: 0.1rem 0.6rem;
-  border-radius: 18px;
+  /* border-radius: 18px; */
 }
 
 /* Markdown extensions */
@@ -237,7 +281,7 @@ button.hashtag {
   background-color: color-mix(in srgb, var(--link-color, currentColor) 12%, transparent);
   font-size: 1rem !important;
   border: 0;
-  border-radius: 18px;
+  /* border-radius: 18px; */
   color: var(--link-color, currentColor);
   cursor: pointer;
   font: inherit;
@@ -259,7 +303,7 @@ body .sidebar {
   color: var(--body-color);
   /* border: 1px solid color-mix(in srgb, currentColor 20%, transparent); */
   border: none;
-  border-radius: 32px;
+  /* border-radius: 32px; */
   bottom: 1rem;
   box-sizing: border-box;
   display: flex;
@@ -291,22 +335,26 @@ body .sidebar {
 .sidebar .search .input-wrap button,
 .sidebar-toggle {
   align-items: center;
-  background: transparent;
+  color: var(--sidebar-background);
+  background: var(--body-color);
+  /* background: transparent; */
   border: 0;
-  color: inherit;
+  /* color: inherit; */
   cursor: pointer;
   display: inline-flex;
   flex: none;
-  font: inherit;
+  /* font: inherit; */
   justify-content: center;
   margin: 0;
-  padding: 0;
+  padding: 0 1rem;
+  border-radius: 0;
 }
 
 .sidebar-actions button,
 .sidebar-toggle {
-  height: 2.5rem;
-  width: 2.5rem;
+  min-height: 2.5rem;
+  min-width: 2.5rem;
+  width: auto;
 }
 
 .sidebar .search .input-wrap button {
@@ -325,11 +373,10 @@ body .sidebar {
   /* opacity: 0.65; */
 }
 
+/* Trigger and close stay plain text buttons: the base reset above
+   (transparent ground, inherited ink) is all they get. */
 .sidebar-actions .sidebar-close {
   display: none;
-  font-size: 1.75rem;
-  background: var(--sidebar-background);
-  line-height: 1;
 }
 
 .sidebar .search {
@@ -359,7 +406,7 @@ body .sidebar {
   min-width: 0;
   padding-right: 2.5rem;
   padding-left: 1rem;
-  border-radius: 2.5rem;
+  /* border-radius: 2.5rem; */
 }
 
 .sidebar .search input[type="search"]:focus {
@@ -396,6 +443,15 @@ body .sidebar {
 
 .sidebar .search .matching-post p {
   margin-top: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+/* Keyword hits in results (injected by js/docsify.js, which re-renders
+   snippets as markdown) */
+.sidebar .search em.search-keyword {
+  color: var(--link-hover);
+  font-style: normal;
+  font-weight: 700;
 }
 
 .sidebar .search .clear-button {
@@ -466,7 +522,7 @@ body .sidebar {
 .sidebar .sidebar-nav > ul > li.active > a,
 .sidebar .sidebar-nav > ul > li:has(.app-sub-sidebar .active) > a {
   background: color-mix(in srgb, currentColor 15%, transparent);
-  border-radius: 8px;
+  /* border-radius: 8px; */
   color: var(--link-color);
   display: inline-block;
   margin: -0.15rem -0.5rem;
@@ -480,14 +536,14 @@ body .sidebar {
 .sidebar > footer {
   color: #777777AA;
   flex: none;
-  font-size: 0.8rem;
-  font-weight: bold;
-  margin-top: auto;
-  padding: 0 1rem 1rem;
+  font-size: 0.7rem;
+  /* font-weight: bold; */
+  /* margin-top: auto; */
+  /* padding: 0 1rem 1rem; */
 }
 
 .sidebar > footer p {
-  margin: 0;
+  /* margin: 0; */
 }
 
 .sidebar-toggle {
@@ -495,7 +551,8 @@ body .sidebar {
 }
 
 /* Mobile sidebar: console mode — drops from the top edge, search prompt
-   pinned to the console bottom, trigger and controls in the bottom corners. */
+   (with the theme switch inline, as on desktop) pinned to the console
+   bottom, trigger and close as centered text pills at the screen bottom. */
 
 @media (max-width: 768px) {
   body .content {
@@ -507,7 +564,7 @@ body .sidebar {
     /* awsm.css gives every aside margin: 0.5em 0 — on a fixed panel that
        would lift it off the top edge. */
     margin: 0;
-    border-radius: 0 0 32px 32px;
+    /* border-radius: 0 0 32px 32px; */
     bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
     left: 0;
     opacity: 0;
@@ -551,14 +608,12 @@ body .sidebar {
   }
 
   .sidebar-toggle {
-    display: block;
-    /* background: var(--sidebar-background); */
-    background-color: transparent;
-    /* background-color: color-mix(in srgb, var(--sidebar-background) 80%, #777777); */
     bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-    left: 1rem;
+    display: block;
+    left: 50%;
     position: fixed;
     top: auto;
+    transform: translateX(-50%);
     z-index: 30;
   }
 
@@ -583,8 +638,7 @@ body .sidebar {
   .sidebar-actions {
     bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
     display: none;
-    flex-direction: row-reverse;
-    justify-content: space-between;
+    justify-content: center;
     top: auto;
   }
 

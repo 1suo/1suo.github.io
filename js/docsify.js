@@ -17,7 +17,7 @@ function setupSidebar() {
   closeButton.className = "sidebar-close";
   closeButton.type = "button";
   closeButton.setAttribute("aria-label", "Close sidebar");
-  closeButton.textContent = "×";
+  closeButton.textContent = "X";
   if (themeSwitcher) actions.appendChild(themeSwitcher);
   actions.appendChild(closeButton);
 
@@ -52,15 +52,16 @@ function setupSidebar() {
       sidebar.setAttribute("role", "dialog");
       sidebar.setAttribute("aria-modal", "true");
       sidebar.setAttribute("aria-label", "Site navigation");
-      if (themeSwitcher) actions.insertBefore(themeSwitcher, closeButton);
     } else {
       sidebar.removeAttribute("role");
       sidebar.removeAttribute("aria-modal");
       sidebar.removeAttribute("aria-label");
       setSidebarOpen(false, false);
-      if (themeSwitcher && inputWrap) {
-        inputWrap.appendChild(themeSwitcher);
-      }
+    }
+    // The theme switch rides the search row in BOTH modes (on mobile the
+    // bottom bar is reserved for the close pill alone).
+    if (themeSwitcher && inputWrap && themeSwitcher.parentNode !== inputWrap) {
+      inputWrap.appendChild(themeSwitcher);
     }
   }
 
@@ -70,7 +71,7 @@ function setupSidebar() {
 
   if (sidebarToggle) {
     if (!sidebar.id) sidebar.id = "site-sidebar";
-    sidebarToggle.replaceChildren("📄");
+    sidebarToggle.replaceChildren("=");
     sidebarToggle.setAttribute("aria-label", "Open sidebar");
     sidebarToggle.setAttribute("aria-controls", sidebar.id);
     sidebarToggle.setAttribute("aria-expanded", "false");
@@ -169,6 +170,171 @@ function renderSidebarHashtags() {
     }
     fragment.append(node.nodeValue.slice(last));
     node.replaceWith(fragment);
+  });
+}
+
+// The search plugin prints result snippets as HTML-escaped RAW markdown
+// (token.text from its lexer index), so `**bold**`, code spans and link
+// syntax show up literally. Re-render each hit through the same pipeline
+// the page uses (MarkdownExtensions + marked), then re-apply the keyword
+// highlighting the plugin baked in — this time over DOM text ranges, so
+// it survives compilation.
+function setupSearchMarkdown(search) {
+  if (!search) return;
+  const panel = search.querySelector(".results-panel");
+  if (!panel || typeof MutationObserver === "undefined") return;
+  const markedRef = window.marked;
+  if (!markedRef || typeof markedRef.parseInline !== "function") return;
+
+  function compileInline(text) {
+    try {
+      const src = window.MarkdownExtensions
+        ? window.MarkdownExtensions.transform(text, {
+            route: window.location.hash.split("?")[0] || "#/",
+          })
+        : text;
+      return markedRef.parseInline(src);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Wrap keyword occurrences in <em class="search-keyword"> (the class the
+  // plugin itself emits) by walking text nodes of the compiled snippet.
+  function highlight(root, query) {
+    const keywords = query.trim().split(/[\s\-，\\/]+/).filter(Boolean);
+    if (!keywords.length) return;
+    if (keywords.length !== 1) keywords.unshift(query.trim());
+    const unique = keywords.filter(function (k, i) {
+      return k && keywords.indexOf(k) === i;
+    });
+    const regs = [];
+    unique.forEach(function (k) {
+      try {
+        regs.push(new RegExp(k.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&"), "gi"));
+      } catch (e) {
+        /* skip malformed keyword */
+      }
+    });
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(function (node) {
+      const text = node.nodeValue;
+      const spans = [];
+      regs.forEach(function (re) {
+        re.lastIndex = 0;
+        let m;
+        while ((m = re.exec(text)) && m[0]) {
+          spans.push([m.index, m.index + m[0].length]);
+        }
+      });
+      if (!spans.length) return;
+      spans.sort(function (a, b) {
+        return a[0] - b[0] || a[1] - b[1];
+      });
+      const kept = [];
+      spans.forEach(function (s) {
+        if (kept.length && s[0] < kept[kept.length - 1][1]) return; // overlap
+        kept.push(s);
+      });
+      const frag = document.createDocumentFragment();
+      let pos = 0;
+      kept.forEach(function (s) {
+        if (pos < s[0]) frag.append(text.slice(pos, s[0]));
+        const em = document.createElement("em");
+        em.className = "search-keyword";
+        em.textContent = text.slice(s[0], s[1]);
+        frag.append(em);
+        pos = s[1];
+      });
+      if (pos < text.length) frag.append(text.slice(pos));
+      node.parentNode.replaceChild(frag, node);
+    });
+  }
+
+  function render(el, query) {
+    const html = compileInline(el.textContent);
+    if (html == null) return;
+    const host = document.createElement("div");
+    host.innerHTML = html;
+    // Each hit card is one big <a>; nested links/buttons/images would make
+    // the parser close that anchor early — flatten them to their text.
+    Array.from(host.querySelectorAll("a, button, img")).forEach(function (n) {
+      n.replaceWith(
+        document.createTextNode(
+          n.tagName === "IMG" ? n.getAttribute("alt") || "" : n.textContent
+        )
+      );
+    });
+    highlight(host, query);
+    el.replaceChildren.apply(el, Array.from(host.childNodes));
+  }
+
+  const processed = new WeakSet();
+  const observer = new MutationObserver(function (records) {
+    const input = search.querySelector("input");
+    const query = input ? input.value : "";
+    records.forEach(function (r) {
+      Array.from(r.addedNodes).forEach(function (n) {
+        if (n.nodeType !== 1) return;
+        // doSearch() sets panel.innerHTML, adding whole .matching-post
+        // cards at once (own rewrites only add em/text, never these).
+        const posts = n.classList.contains("matching-post")
+          ? [n]
+          : Array.from(n.querySelectorAll(".matching-post"));
+        posts.forEach(function (post) {
+          if (processed.has(post)) return;
+          processed.add(post);
+          const h2 = post.querySelector("h2");
+          const p = post.querySelector("p");
+          if (h2) render(h2, query);
+          if (p) render(p, query);
+        });
+      });
+    });
+  });
+  observer.observe(panel, { childList: true, subtree: true });
+}
+
+// Keep the sidebar outline in step with reading: when docsify's scroll-spy
+// moves the .active marker, scroll the outline just enough to reveal the
+// active link — never jumps when it is already visible, never scrolls the
+// page itself (only nav.scrollTop is touched).
+function setupSidebarScrollSpy(sidebar) {
+  const nav = sidebar.querySelector(".sidebar-nav");
+  if (!nav || typeof MutationObserver === "undefined") return;
+
+  function reveal(li) {
+    const navTop = nav.getBoundingClientRect().top;
+    const rect = li.getBoundingClientRect();
+    const top = rect.top - navTop;
+    const bottom = top + rect.height;
+    const pad = 8;
+    if (top < pad) nav.scrollTop += top - pad;
+    else if (bottom > nav.clientHeight - pad)
+      nav.scrollTop += bottom - nav.clientHeight + pad;
+  }
+
+  let pending = null;
+  const observer = new MutationObserver(function (records) {
+    let target = null;
+    records.forEach(function (r) {
+      if (r.target.nodeType === 1 && r.target.classList.contains("active"))
+        target = r.target;
+    });
+    if (!target) return;
+    const li = target.closest("li") || target;
+    if (pending) cancelAnimationFrame(pending);
+    pending = requestAnimationFrame(function () {
+      pending = null;
+      if (li.isConnected) reveal(li);
+    });
+  });
+  observer.observe(nav, {
+    attributes: true,
+    attributeFilter: ["class"],
+    subtree: true,
   });
 }
 
@@ -312,6 +478,8 @@ window.$docsify = {
         const sidebarUi = setupSidebar();
         if (!sidebarUi) return;
         setupSidebarFooter(sidebarUi.sidebar);
+        setupSidebarScrollSpy(sidebarUi.sidebar);
+        setupSearchMarkdown(sidebarUi.search);
         setupHashtagSearch(
           sidebarUi.search,
           sidebarUi.setOpen,

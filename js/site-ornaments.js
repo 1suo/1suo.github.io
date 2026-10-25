@@ -44,7 +44,7 @@
     smooth: 2,        // curve samples per segment, 2–8 (studio: smooth)
     organic: 0,       // 0 geometric · 1 crisp · 2 soft · 3 organic (studio: style)
     sym: 'none',         // ring symmetry: 'v' left≡right · 'h' top≡bottom · 'both' · 'none' (one wrap seam)
-    readout: 'shards',   // how the plane reads the CA: null = roll per load · 'ray' radiates from the text · 'noise' smooth warp (distributes, but shears the texture) · 'shards' marquetry — pure CA inside each shard, offsets distribute
+    readout: 'noise',   // how the plane reads the CA: null = roll per load · 'ray' radiates from the text · 'noise' smooth warp (distributes, but shears the texture) · 'shards' marquetry — pure CA inside each shard, offsets distribute
     // -- readout tuning, rolled per load (ray ignores all of these) --
     kSlope: [0.3, 0.75],  // noise: angular warp budget, ring px per plane px — how hard the courses meander
     gSlope: [0.06, 0.22], // noise: radial warp budget, generations per plane px — how hard the banding scrambles
@@ -55,7 +55,7 @@
     // -- borders: REAL gaps in px (one-cell moats — the ornament between them
     //    is untouched; replaces the old distanding standoff window) --
     padInner: 48,                            // gap between ink and the text block
-    padOuter: { l: 16, r: 16, t: 32, b: 32 },   // gaps from the container bounds: left/right sides, top, bottom
+    padOuter: { l: 12, r: 12, t: 12, b: 12 },   // gaps from the container bounds: left/right sides, top, bottom
     opacity: 1,    // ink strength of the ornament, 0–1
     // -- random genome per load --
     dens: [0.4, 0.9],  // CA seed density (studio: density) — dead draws averaged 0.77
@@ -94,18 +94,30 @@
 
   var svg = null;
   var io = null;
-  var resizeTimer = null;
+  var buildTimer = null; // ONE scheduler: bursts of triggers (fonts, resize,
+                         // pagination settling, theme flips) rebuild once
+  var retired = null; // frame kept visible while its replacement draws —
+                      // removed the tick the new frame's paths land
+  var lastFrame = null; // {x,y,w,h,color,width} of the drawn frame: equal
+                        // geometry + ink means there is nothing to rebuild
   var P = null; // genome — rolls ONCE per page load; rebuilds (resize, late
                 // layout, theme flip, route change) reuse it, as documented
   var ro = null;
-  var roTimer = null;
   var roSize = null;
+
+  function scheduleBuild(delay) {
+    clearTimeout(buildTimer);
+    buildTimer = setTimeout(build, delay);
+  }
 
   function teardown() {
     if (io) io.disconnect();
     io = null;
     if (svg && svg.parentNode) svg.parentNode.removeChild(svg);
     svg = null;
+    if (retired && retired.parentNode) retired.parentNode.removeChild(retired);
+    retired = null;
+    lastFrame = null;
   }
 
   // measure the page's own divider: the ornament should wear exactly the
@@ -133,7 +145,6 @@
   }
 
   function build() {
-    teardown();
     var art = document.querySelector("article.markdown-section") ||
       document.querySelector(".markdown-section");
     if (!art) return;
@@ -199,12 +210,43 @@
     W = Math.max(1, Math.min(W, Math.floor(doc.clientWidth - SETTINGS.edgePad - leftLimit) - 1));
     // same discipline at the page bottom: scrollHeight is an integer and
     // Math.round rounds the span UP — a sub-pixel tail past the footer
-    // makes the whole page scrollable by a hair. teardown() already
-    // removed the previous SVG, so doc.scrollHeight is the page's own
+    // makes the whole page scrollable by a hair. Any previous frame was
+    // itself self-healed to fit, so doc.scrollHeight is the page's own
     // budget; the 1px slack covers every rounding mode
     var artTopDoc = ar.top + (window.scrollY || window.pageYOffset || 0);
     H = Math.max(1, Math.min(H, Math.floor(doc.scrollHeight - artTopDoc) - 1));
-    if (W < 80 || H < 60) return;
+    if (W < 80 || H < 60) {
+      teardown();
+      return;
+    }
+
+    // Rebuild discipline — the ornament must never flash. Every late
+    // layout event (font swap, images decoding, pagination settling,
+    // resize, theme flip) re-enters build(); the old teardown-first flow
+    // blanked the page until each new frame's deferred draw, so the
+    // ornament visibly blinked a few times after generation. Instead:
+    //   same geometry + same ink   → keep the drawn frame untouched
+    //   same geometry, new ink     → restroke the drawn paths in place
+    //   anything else              → draw the replacement first, retire the
+    //                                old frame in the same tick
+    var frame = { x: boxX0, y: boxY0, w: W, h: H, color: strokeC, width: strokeW };
+    if (svg && svg.isConnected && svg.firstChild && lastFrame &&
+        lastFrame.x === frame.x && lastFrame.y === frame.y &&
+        lastFrame.w === frame.w && lastFrame.h === frame.h) {
+      if (lastFrame.color === frame.color && lastFrame.width === frame.width)
+        return; // nothing changed — this was a flash, not a rebuild
+      Array.prototype.forEach.call(svg.children, function (path) {
+        path.setAttribute("stroke", strokeC);
+        path.setAttribute("stroke-width", String(strokeW));
+      });
+      lastFrame.color = frame.color;
+      lastFrame.width = frame.width;
+      return;
+    }
+    if (retired && retired.parentNode) retired.parentNode.removeChild(retired);
+    retired = svg && svg.isConnected ? svg : null;
+    if (io) io.disconnect();
+    io = null;
 
     var inner = {
       x0: text.x0 - boxX0,
@@ -305,6 +347,12 @@
         el.setAttribute("stroke-linejoin", "round");
         svg.appendChild(el);
       }
+      // the replacement has ink: only now drop the frame it replaced
+      lastFrame = frame;
+      if (retired) {
+        if (retired.parentNode) retired.parentNode.removeChild(retired);
+        retired = null;
+      }
     }
 
     // late layout (images, embeds, highlighting) grows the page after the
@@ -319,8 +367,7 @@
           if (!roSize) { roSize = size; return; }
           if (size[0] === roSize[0] && size[1] === roSize[1]) return;
           roSize = size;
-          clearTimeout(roTimer);
-          roTimer = setTimeout(build, 150);
+          scheduleBuild(150);
         });
       ro.observe(art);
     }
@@ -339,18 +386,17 @@
   }
 
   window.addEventListener("resize", function () {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(build, 250);
+    scheduleBuild(250);
   });
   // re-measure when the theme flips (divider color could become themed)
   if (typeof MutationObserver !== "undefined") {
-    new MutationObserver(function () { build(); }).observe(
+    new MutationObserver(function () { scheduleBuild(80); }).observe(
       document.documentElement,
       { attributes: true, attributeFilter: ["data-theme"] }
     );
   }
   if (document.fonts && document.fonts.ready)
-    document.fonts.ready.then(function () { build(); });
+    document.fonts.ready.then(function () { scheduleBuild(80); });
 
   window.$docsify = window.$docsify || {};
   window.$docsify.plugins = (window.$docsify.plugins || []).concat(
