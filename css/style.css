@@ -480,33 +480,25 @@ body .sidebar {
 .sidebar-actions button,
 .sidebar .search .input-wrap button,
 .sidebar-toggle {
-  align-items: center;
-  /* color: var(--sidebar-background); */
-  /* background: var(--body-color); */
   background: color-mix(in srgb, var(--body-color) 20%, var(--sidebar-background));
   color: var(--body-color);
-  /* background: #777777; */
-  /* background: transparent; */
   border: 0;
-  /* color: inherit; */
   cursor: pointer;
-  display: inline-flex;
-  flex: none;
-  /* awsm reset the button font (family + 1em size); sakura leaves the UA
-     default (13.33px system font). Chrome font at the inherited size. */
-  font-family: "Roboto", sans-serif;
+  display: flex;
+  /* flex: none; */
+  font-family: "Roboto Mono", monospace;
   font-size: inherit;
   justify-content: center;
-  margin: 0;
-  padding: 0 1rem;
-  border-radius: 0;
+  align-items: center;
+  height: 2rem;
+  width: 2rem;
 }
 
 .sidebar-actions button,
 .sidebar-toggle {
-  min-height: 2.5rem;
-  min-width: 2.5rem;
-  width: auto;
+  /* min-height: 2.5rem; */
+  /* min-width: 2.5rem; */
+  /* width: auto; */
 }
 
 .sidebar .search .input-wrap button {

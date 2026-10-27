@@ -36,7 +36,7 @@ function setupSidebar() {
   closeButton.className = "sidebar-close";
   closeButton.type = "button";
   closeButton.setAttribute("aria-label", "Close sidebar");
-  closeButton.textContent = "X";
+  closeButton.textContent = "x";
   if (themeSwitcher) actions.appendChild(themeSwitcher);
   actions.appendChild(closeButton);
 
