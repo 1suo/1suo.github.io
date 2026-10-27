@@ -19,26 +19,6 @@ function normalizeHash() {
 normalizeHash();
 window.addEventListener("hashchange", normalizeHash);
 
-// The toggle's mark must sit dead-centre of its pill. A text "=" cannot
-// promise that: its ink is off-centre inside its own line box (in Roboto
-// Mono the bars ride low, the advance is lopsided, and every font
-// fallback moves them again), so no box-centering CSS lands it —
-// pixel-measured across environments. Two hairlines in a square viewBox
-// are centred by construction; the pill's flex centering does the rest.
-function makeToggleMark(button) {
-  const NS = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(NS, "svg");
-  svg.setAttribute("viewBox", "0 0 12 12");
-  svg.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS(NS, "path");
-  path.setAttribute("d", "M2.5 4.4h7M2.5 7.6h7");
-  path.setAttribute("stroke", "currentColor");
-  path.setAttribute("stroke-width", "1.6");
-  path.setAttribute("fill", "none");
-  svg.appendChild(path);
-  button.replaceChildren(svg);
-}
-
 function setupSidebar() {
   const search = document.querySelector(".search");
   const sidebar = document.querySelector(".sidebar");
@@ -110,7 +90,7 @@ function setupSidebar() {
 
   if (sidebarToggle) {
     if (!sidebar.id) sidebar.id = "site-sidebar";
-    makeToggleMark(sidebarToggle);
+    sidebarToggle.replaceChildren("=");
     sidebarToggle.setAttribute("aria-label", "Open sidebar");
     sidebarToggle.setAttribute("aria-controls", sidebar.id);
     sidebarToggle.setAttribute("aria-expanded", "false");

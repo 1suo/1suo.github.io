@@ -492,15 +492,11 @@ body .sidebar {
   align-items: center;
   height: 2rem;
   width: 2rem;
-}
-
-/* The toggle's mark (js/docsify.js injects it): two hairlines in a square
-   viewBox, centred by construction — a text "=" sits off-centre in its own
-   metrics in every font, so the mark is drawn, not typed. */
-.sidebar-toggle svg {
-  display: block;
-  width: 0.8em;
-  height: 0.8em;
+  /* sakura's button padding (5px 10px, border-box) would leave a 12×22
+     content box in the fixed 2rem pill — the text overflows it and the
+     overflow renders shifted. Zero the padding; flex does the centering. */
+  padding: 0;
+  line-height: 1;
 }
 
 .sidebar-actions button,
@@ -778,9 +774,8 @@ body .sidebar {
 
   .sidebar-toggle {
     bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-    /* inline-flex (not block): the base rule centers flex content both
-       ways, so the drawn mark sits mid-pill — block left the content at
-       the top of the pill. */
+    /* inline-flex (not block): block killed the base rule's flex
+       centering, leaving the char at the top of the pill. */
     display: inline-flex;
     left: 50%;
     position: fixed;
