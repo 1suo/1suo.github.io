@@ -198,6 +198,11 @@
     // --app-max cap (style.css) the page is empty centered margin — the
     // ornament must not drift out there, so the right void ends at the
     // canvas, exactly where the left void ends at the sidebar card
+    var appTop = 0; // the app's own top offset (the sidebar card's top):
+    // style.css floats the whole app down on very large screens, and the
+    // ornament's top lane must not rise above where the app itself begins.
+    // Read as the fixed card's resolved `top` — live (the media query is
+    // already in it) and scroll-invariant, unlike the card's rect
     var sidebar = document.querySelector(".sidebar");
     if (sidebar) {
       var sr = sidebar.getBoundingClientRect();
@@ -206,6 +211,7 @@
         // the canvas is centered, so its right edge mirrors the sidebar's
         // left edge — no copy of the CSS cap lives here
         canvasR = doc.clientWidth - Math.max(0, sr.left);
+        appTop = Math.max(0, parseFloat(getComputedStyle(sidebar).top) || 0);
       }
     }
     var leftRoom = ar.left - leftLimit;
@@ -234,8 +240,10 @@
     var laneL = lane(leftRoom, SETTINGS.sideMax);
     var laneR = lane(rightRoom, SETTINGS.sideMax);
     // horizontal lanes: the article's own paddings, plus the footer gap
-    // hunted into the bottom one (up to bottomMax)
-    var laneT = lane(text.y0, SETTINGS.bandMax);
+    // hunted into the bottom one (up to bottomMax). The top void starts
+    // at the app's top offset, not the article's raw top — when the app
+    // floats down on very large screens the ornament floats with it
+    var laneT = lane(text.y0 - appTop, SETTINGS.bandMax);
     var laneB = lane(art.scrollHeight - text.y1 + bottomRoom, SETTINGS.bandMax);
     var boxX0 = laneL ? -laneL : text.x0;
     var boxX1 = laneR ? ar.width + laneR : text.x1;

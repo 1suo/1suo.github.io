@@ -494,6 +494,15 @@ body .sidebar {
   width: 2rem;
 }
 
+/* The toggle's mark (js/docsify.js injects it): two hairlines in a square
+   viewBox, centred by construction — a text "=" sits off-centre in its own
+   metrics in every font, so the mark is drawn, not typed. */
+.sidebar-toggle svg {
+  display: block;
+  width: 0.8em;
+  height: 0.8em;
+}
+
 .sidebar-actions button,
 .sidebar-toggle {
   /* min-height: 2.5rem; */
@@ -769,7 +778,10 @@ body .sidebar {
 
   .sidebar-toggle {
     bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-    display: block;
+    /* inline-flex (not block): the base rule centers flex content both
+       ways, so the drawn mark sits mid-pill — block left the content at
+       the top of the pill. */
+    display: inline-flex;
     left: 50%;
     position: fixed;
     top: auto;
