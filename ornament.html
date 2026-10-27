@@ -40,6 +40,7 @@
   .btn{background:#06202b;color:var(--chrome-fg);border:1px solid rgba(255,255,255,.08);padding:6px 10px;border-radius:8px;cursor:pointer;font-size:12.5px}
   .btn:hover{background:#0a3245}
   .hint{font-size:11px;color:#5f7288;margin-top:2px}
+  #pad{display:block;width:100%;height:88px;background:#0d1420;border:1px solid var(--chrome-line);border-radius:8px;touch-action:none;cursor:crosshair}
 
   main{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;align-items:center;gap:14px}
   .paper{background:var(--paper);color:var(--ink);width:100%;max-width:900px;border-radius:10px;padding:34px 40px;box-shadow:0 8px 40px rgba(0,0,0,.45);--orn-bg:var(--paper)}
@@ -59,6 +60,11 @@
   @media (min-width:641px){ .stage:not(.bands) .prose{width:74%;margin:0 auto} }
 
   #scrolltest{display:none;width:100%;max-width:720px}
+  #padtab{display:none;width:100%;max-width:900px;flex-direction:column;gap:10px}
+  #padtab.show{display:flex}
+  #padStage{position:relative;width:100%;height:440px;background:var(--paper);color:var(--ink);border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.45);--orn-bg:var(--paper);overflow:hidden}
+  #padStage svg{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+  #padInk{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
   #scrolltest article{background:var(--paper);color:var(--ink);border-radius:10px;padding:34px 40px;--orn-bg:var(--paper);font:16px/1.62 Georgia,serif}
   #scrolltest article h2{font:600 22px/1.3 Georgia,serif;margin:0 0 .6em}
   #scrolltest article p{margin:0 0 1.05em}
@@ -84,6 +90,7 @@
   <div class="t">Ornaments</div>
   <button class="tabbtn on" id="tabStudio">Studio</button>
   <button class="tabbtn" id="tabScroll">Scroll test</button>
+  <button class="tabbtn" id="tabPad">Pad</button>
   <div class="hspace"></div>
   <div class="status" id="status"></div>
 </header>
@@ -124,7 +131,16 @@
       <option value="noise">noise · 4 octaves</option>
       <option value="walk">walk · knot spline</option>
       <option value="pulse">pulse · plateaus</option>
+      <option value="draw">draw · your stylus</option>
     </select>
+  </div>
+  <div id="padBlock" hidden>
+    <canvas id="pad" width="484" height="176" title="draw the seed curve with your stylus"></canvas>
+    <div class="row" style="margin-top:6px">
+      <button class="btn" id="padClear">✕ clear pad</button>
+      <span class="hint">empty pad = blank field</span>
+    </div>
+    <div class="hint">the seed curve by hand: high = ink cells, low = blank · pen pressure = stroke weight · left edge = fold line, right = ring middle</div>
   </div>
   <div class="row"><label>readout</label>
     <select id="readout">
@@ -216,6 +232,14 @@
     <span id="logCount">0 rated</span>
   </div>
   <div id="scrolltest"><article id="article"></article></div>
+  <div id="padtab">
+    <div id="padStage"></div>
+    <div class="row" style="margin:0">
+      <button class="btn" id="tabPadClear">✕ clear ink</button>
+      <button class="btn" id="tabPadInk" title="show or hide your drawing layer — the pen still works while hidden">◐ strokes</button>
+      <span class="hint">your strokes are the article — the rule grows away from their path in every direction, lace shells that follow your drawing; the seed row rolls from the seed (🎲/R), width and pressure never enter the CA; z·rate flows the shells (drift animates); rule 0–255 (blank rolls); blank pad grows a frame from the page edge</span>
+    </div>
+  </div>
 </main>
 </div>
 <div class="toast" id="toast"></div>
@@ -412,15 +436,26 @@ function genCA(w, h, seed, o){
   const cell = o.detail != null
     ? Math.max(2.4, Math.min(10, o.detail))
     : Math.max(4, Math.min(10, strip / 3.4));
-  const nx = Math.floor(w / cell) + 2, ny = Math.floor(h / cell) + 2;
+  // ONE square unit: the marching cells are exactly cell × cell — the
+  // same length the CA readout divides by (ring step AND generation
+  // step) — so the automaton is sampled at its own pitch, 1:1 in both
+  // axes: no anisotropic sx×sy rectangles, no skipped or doubled cells
+  // (the resampling smear the noise-readout notes warn about). cell
+  // rarely divides w or h exactly, so the remainder is split to both
+  // edges (gx0 = r/2): node positions stay mirror-symmetric about the
+  // frame centre, which the twin discipline (canonical crossings,
+  // mirror-invariant chaining, twin-safe caps) stands on. The grid then
+  // stops r/2 short of the frame edges, so the window seals against the
+  // GRID extent (gx0…gx1, gy0…gy1), not the frame — every contour still
+  // closes inside the evaluated area, nothing dangles at the boundary.
+  const nx = Math.floor(w / cell) + 1, ny = Math.floor(h / cell) + 1;
   // node coordinates precomputed once — gx/gy were pure functions of the
   // index, evaluated nx·ny times per pass (field, window, crossings)
   const XS = new Float64Array(nx), YS = new Float64Array(ny);
-  {
-    const sx = w / (nx - 1), sy = h / (ny - 1);
-    for (let i = 0; i < nx; i++) XS[i] = Math.min(w, i * sx);
-    for (let j = 0; j < ny; j++) YS[j] = Math.min(h, j * sy);
-  }
+  const gx0 = (w - (nx - 1) * cell) / 2, gx1 = w - gx0;
+  const gy0 = (h - (ny - 1) * cell) / 2, gy1 = h - gy0;
+  for (let i = 0; i < nx; i++) XS[i] = gx0 + i * cell;
+  for (let j = 0; j < ny; j++) YS[j] = gy0 + j * cell;
 
   // ---- the field IS a cellular automaton (Wolfram rule on a cylinder) ----
   // z does NOT advance the generation window — that would merely pan the
@@ -456,11 +491,14 @@ function genCA(w, h, seed, o){
   // fixed 1–4 low carriers were page-sized on site rings). u ∈ [0,1] is
   // the mirrored ring coordinate; procedures see only u, so the row stays
   // mirror-symmetric and wrap-continuous by construction. Pin via
-  // o.seedProc; null rolls one per genome.
+  // o.seedProc; null rolls one per genome. An eighth source, draw,
+  // bypasses the library: o.drawnRow (the studio stylus pad) supplies the
+  // seed curve directly, M samples of it over u ∈ [0,1].
   const cycPx = ringN * cell;                    // ring circumference in px
   const wl = (a, b) => cycPx / rrange(r, a, b);  // wavelength px → cycles
   const PROCS = ['harm', 'fm', 'square', 'chirp', 'noise', 'walk', 'pulse'];
-  const proc = PROCS.includes(o.seedProc) ? o.seedProc : pick(r, PROCS);
+  const proc = o.drawnRow && o.drawnRow.length >= 8 ? 'draw'
+             : PROCS.includes(o.seedProc) ? o.seedProc : pick(r, PROCS);
   const ihash = (a, b) => { let x = Math.imul(a ^ 0x9E3779B9, 0x85EBCA6B) ^ Math.imul(b + 0x6D2B79F5, 0xC2B2AE35); x = Math.imul(x ^ (x >>> 15), 0x27D4EB2F); return ((x ^ (x >>> 13)) >>> 0) / 4294967296; };
   const sstep01 = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
   // periodic value noise, 4 octaves, seeded; slides with pp so z drifts it
@@ -480,7 +518,21 @@ function genCA(w, h, seed, o){
     };
   };
   let rowEval;
-  if (proc === 'noise'){
+  if (proc === 'draw'){
+    // your own hand: o.drawnRow = the seed curve sampled over u ∈ [0,1]
+    // (pad top = +1, bottom = −1 — the same waveform the procedures
+    // synthesize). Linear interpolation between samples; drift slides the
+    // read window with a triangle fold, so the curve travels the ring and
+    // ping-pongs at the pad's edges — continuous and mirrored by
+    // construction, like every other source.
+    const D = o.drawnRow, M = D.length;
+    const dr = rrange(r, 0.05, 0.25) * (r() < 0.5 ? 1 : -1);
+    const tri = t => { const fr = ((t % 2) + 2) % 2; return fr <= 1 ? fr : 2 - fr; };
+    rowEval = (u, pp) => {
+      const x = tri(u + pp * dr) * (M - 1), i = Math.floor(x), t = x - i;
+      return D[i] * (1 - t) + D[Math.min(M - 1, i + 1)] * t;
+    };
+  } else if (proc === 'noise'){
     rowEval = vnoise((r() * 1e9) | 0);
   } else if (proc === 'walk'){
     const kn = Math.max(3, Math.round(wl(60, 160))), vs = [], vs2 = [];
@@ -1131,6 +1183,18 @@ function genCA(w, h, seed, o){
   const NNODE = nx * ny;
   let V = new Float64Array(NNODE);
   const G = new Float64Array(NNODE);
+  // the studio pad's stylus stencil: o.ink (x, y) → ink density in [0,1],
+  // sampled once onto the node grid. The gate multiplies the window, so
+  // contours live only where you drew — the automaton supplies the lines,
+  // the hand supplies the placement. Hooked HERE, not at the seed: every
+  // readout only chooses which cells a stroke's interior reads, so no
+  // readout can re-place or wipe the drawing. null = no gate, bit-for-bit
+  // the site behaviour.
+  let INKG = null;
+  if (typeof o.ink === 'function'){
+    INKG = new Float64Array(NNODE);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) INKG[j * nx + i] = o.ink(XS[i], YS[j]);
+  }
   for (let j = 0; j < ny; j++){
     const sy = FSY[j], ty = FTY[j], dy = DYY[j];
     const gvRow = GV ? j * nx : 0, rowBase = j * nx, y = YS[j];
@@ -1212,11 +1276,11 @@ function genCA(w, h, seed, o){
         // so the hypot (measurably the slow call here) is skipped for most
         // nodes with bit-identical results
         const dI = dx === 0 || dy === 0 ? dx + dy : Math.hypot(dx, dy);
-        const tA = Math.min(x, y, w - x, h - y) / margin;
+        const tA = Math.min(x - gx0, y - gy0, gx1 - x, gy1 - y) / margin;
         const sA = tA >= 1 ? 1 : tA * tA * (3 - 2 * tA);
         const tB = dI / margin;
         const sB = tB >= 1 ? 1 : tB * tB * (3 - 2 * tB);
-        const win = Math.min(sA, sB);
+        const win = Math.min(sA, sB) * (INKG ? INKG[n] : 1);
         G[n] = (win >= 1 ? val : val - (1 - win) * 0.9) - LEVEL;
       }
     }
@@ -1244,11 +1308,11 @@ function genCA(w, h, seed, o){
       for (let i = 0; i < nx; i++){
         const x = XS[i], dx = DXX[i];
         const dI = dx === 0 || dy === 0 ? dx + dy : Math.hypot(dx, dy);
-        const tA = Math.min(x, y, w - x, h - y) / margin;
+        const tA = Math.min(x - gx0, y - gy0, gx1 - x, gy1 - y) / margin;
         const sA = tA >= 1 ? 1 : tA * tA * (3 - 2 * tA);
         const tB = dI / margin;
         const sB = tB >= 1 ? 1 : tB * tB * (3 - 2 * tB);
-        const win = Math.min(sA, sB);
+        const win = Math.min(sA, sB) * (INKG ? INKG[rb + i] : 1);
         const v = V[rb + i];
         G[rb + i] = (win >= 1 ? v : v - (1 - win) * 0.9) - LEVEL;
       }
@@ -1982,7 +2046,83 @@ $('rule').oninput = e => {
   render();
 };
 $('sym').onchange = e => { state.sym = e.target.value; render(); };
-$('seedProc').onchange = e => { state.seedProc = e.target.value || null; render(); };
+$('seedProc').onchange = e => { state.seedProc = e.target.value || null; $('padBlock').hidden = state.seedProc !== 'draw'; render(); };
+
+/* ---------- stylus pad: draw the seed curve by hand ----------
+   The pad IS a seed-row procedure: horizontal = u across the folded
+   ring span (left = fold line, right = ring middle), vertical = the
+   amplitude every other procedure synthesizes. Ink centre of mass per
+   column becomes the sample; gaps bridge linearly, ends extend flat,
+   so the curve is continuous exactly like the library sources. */
+const pad = $('pad'), pctx = pad.getContext('2d');
+const PAD_EMPTY = new Array(256).fill(-1);       // blank pad = blank field
+let padRow = null;                               // 256 samples, −1..1
+function padGuide(){                             // midline hairline, under ink threshold
+  pctx.save(); pctx.strokeStyle = 'rgba(230,238,246,.12)'; pctx.setLineDash([4,5]); pctx.lineWidth = 1;
+  pctx.beginPath(); pctx.moveTo(0, pad.height / 2); pctx.lineTo(pad.width, pad.height / 2); pctx.stroke(); pctx.restore();
+}
+padGuide();
+function padClear(){ padRow = null; pctx.clearRect(0, 0, pad.width, pad.height); padGuide(); render(); }
+$('padClear').onclick = padClear;
+function padPos(e){
+  const rc = pad.getBoundingClientRect();
+  return { x: (e.clientX - rc.left) * pad.width / rc.width, y: (e.clientY - rc.top) * pad.height / rc.height,
+           pr: e.pointerType === 'pen' ? Math.max(0.08, e.pressure) : 0.5 };
+}
+function padInk(a, b){
+  pctx.strokeStyle = `rgba(214,232,248,${(0.3 + 0.7 * b.pr).toFixed(3)})`;
+  pctx.lineWidth = 2 + 6 * b.pr;
+  pctx.lineCap = 'round'; pctx.lineJoin = 'round';
+  pctx.beginPath(); pctx.moveTo(a.x, a.y); pctx.lineTo(b.x, b.y); pctx.stroke();
+}
+function padSample(){
+  const M = 256, W = pad.width, H = pad.height;
+  const img = pctx.getImageData(0, 0, W, H).data;
+  const num = new Float64Array(M), den = new Float64Array(M), ink = new Uint8Array(M);
+  for (let y = 0; y < H; y++){
+    const off = y * W * 4, vy = 1 - y / (H - 1);       // pad top = +1, bottom = −1
+    for (let x = 0; x < W; x++){
+      const a = img[off + x * 4 + 3] / 255;
+      if (a < 0.2) continue;                           // ignores the guide hairline
+      const k = Math.min(M - 1, (x * M / W) | 0);
+      num[k] += a * vy; den[k] += a; ink[k] = 1;
+    }
+  }
+  const defined = [];
+  for (let k = 0; k < M; k++) if (ink[k]) defined.push(k);
+  if (!defined.length){ padRow = null; return; }
+  const v = new Array(M);
+  for (const k of defined) v[k] = 2 * num[k] / den[k] - 1;
+  const first = defined[0], last = defined[defined.length - 1];
+  for (let k = 0; k < first; k++) v[k] = v[first];     // extend flat past the ends
+  for (let k = last + 1; k < M; k++) v[k] = v[last];
+  for (let j = 0; j < defined.length - 1; j++){       // bridge gaps linearly
+    const k0 = defined[j], k1 = defined[j + 1];
+    for (let k = k0 + 1; k < k1; k++) v[k] = v[k0] + (v[k1] - v[k0]) * (k - k0) / (k1 - k0);
+  }
+  padRow = v;
+}
+let padStroke = false, padLast = null, padQueued = false;
+function padRenderSoon(){                             // live, but one render per frame
+  if (padQueued) return; padQueued = true;
+  requestAnimationFrame(() => { padQueued = false; padSample(); render(); });
+}
+pad.onpointerdown = e => {
+  e.preventDefault(); pad.setPointerCapture(e.pointerId);
+  padStroke = true; padLast = padPos(e);
+  padInk(padLast, { x: padLast.x + 0.01, y: padLast.y, pr: padLast.pr });   // tap = dot
+};
+pad.onpointermove = e => {
+  if (!padStroke) return;
+  for (const ev of (e.getCoalescedEvents ? e.getCoalescedEvents() : [e])){
+    const pt = padPos(ev);
+    if (padLast) padInk(padLast, pt);
+    padLast = pt;
+  }
+  padRenderSoon();
+};
+const padUp = () => { if (!padStroke) return; padStroke = false; padLast = null; padSample(); render(); };
+pad.onpointerup = padUp; pad.onpointercancel = padUp;
 $('readout').onchange = e => { state.readout = e.target.value || null; render(); };
 $('zsel').oninput = e => {
   state.z = +e.target.value; $('zval').textContent = state.z.toFixed(1);
@@ -2125,6 +2265,7 @@ function syncPanels(){
 
 /* ---------- render ---------- */
 function render(){
+  if (state.tab === 'pad'){ renderPad(); return; }
   const paper = $('paper');
   const svgNS = 'http://www.w3.org/2000/svg';
   const t0 = performance.now();
@@ -2146,7 +2287,7 @@ function render(){
     if (state.survey && !state.surveyVals) state.surveyVals = rollSurvey();
     const sv = state.survey ? state.surveyVals : null;
     const opts = {
-      variant: state.variant, sym: state.sym, seedProc: state.seedProc, readout: sv ? sv.readout : state.readout, z: sv ? sv.z : state.z, inner,
+      variant: state.variant, sym: state.sym, seedProc: state.seedProc, drawnRow: state.seedProc === 'draw' ? (padRow || PAD_EMPTY) : null, readout: sv ? sv.readout : state.readout, z: sv ? sv.z : state.z, inner,
       rule: sv ? null : state.rule, dens: sv ? sv.dens : state.dens, rate: sv ? sv.rate : state.rate,
       standoff: sv ? sv.standoff : state.standoff, detail: sv ? sv.detail : state.detail,
       padInner: sv ? null : state.padInner, padOuter: sv ? null : state.padOuter,
@@ -2235,6 +2376,327 @@ function render(){
   $('status').textContent = `${state.sp}/${state.spVariant} · ${res.meta || ''} · ${(res.paths || []).length} paths · ${ms} ms`;
 }
 
+/* ============================ pad tab ==============================
+   Your drawing IS the article. The strokes you draw — in draw order —
+   form the automaton's RING (genCA's architecture, wrapped around your
+   hand instead of a text box): generation = distance from your ink's
+   PATH, so the rule grows away from your strokes in EVERY direction,
+   shells of lace following the drawing's shape. The seed row on that
+   ring rolls from the seed — the path is yours, the texture is the
+   rule's; stroke width and pressure NEVER enter the automaton. The
+   palindrome fold keeps the ring seam-free. z·rate is the studio's own
+   phase — shells flow outward, drift animates. Rule 0–255 (blank rolls
+   a lively one; 🎲 / R reroll). Blank pad: the ring is the page
+   perimeter, a frame growing inward — the site ornament with an empty
+   article. No readout exists here: the CA picture IS the placement. */
+let padBuilt = null;                     // stage skeleton { svg, ink, W, H, dpr }
+let inkRev = 0;                          // bumped per stroke — evolution cache key
+let strokes = [];                        // drawn polylines [x, y] in viewBox coords — PATH only:
+                                         // width and pressure never enter the automaton
+let elemCache = null;
+const PAD_RULES = [30, 45, 105, 110, 150];      // lively pool for auto rolls — resting rules would leave the pen silent
+function elemField(W, H, cell, rule, dens, seed){
+  const key = [W, H, cell, rule, dens, seed, inkRev].join('|');
+  if (elemCache && elemCache.key === key) return elemCache;
+  const nx = Math.floor(W / cell) + 1, ny = Math.floor(H / cell) + 1;
+  const gx0 = (W - (nx - 1) * cell) / 2, gy0 = (H - (ny - 1) * cell) / 2;
+  // a closed rectangular ring — the blank pad's page frame, and the
+  // miniature frame a tap or tiny flick becomes (too short to be a ring
+  // itself, a 2-cell ring dies under any rule)
+  const perim = (x0, y0, x1, y1) => {
+    const P = [];
+    for (let x = x0; x <= x1; x += cell) P.push([x, y0]);
+    for (let y = y0 + cell; y <= y1; y += cell) P.push([x1, y]);
+    for (let x = x1 - cell; x >= x0; x -= cell) P.push([x, y1]);
+    for (let y = y1 - cell; y > y0; y -= cell) P.push([x0, y]);
+    return P;
+  };
+  // ---- the ring: your strokes in draw order, resampled at cell pitch
+  const S = [];
+  const emit = (x, y) => {
+    const last = S[S.length - 1];
+    if (last && Math.hypot(x - last[0], y - last[1]) < cell * 0.75) return;
+    if (S.length < 8192) S.push([x, y]);
+  };
+  if (strokes.length){
+    for (const st of strokes){
+      let prev = null;
+      for (const q of st){
+        if (prev){
+          const len = Math.hypot(q[0] - prev[0], q[1] - prev[1]);
+          const steps = Math.max(1, Math.ceil(len / cell));
+          for (let s2 = 1; s2 <= steps; s2++)
+            emit(prev[0] + (q[0] - prev[0]) * s2 / steps, prev[1] + (q[1] - prev[1]) * s2 / steps);
+        } else emit(q[0], q[1]);
+        prev = q;
+      }
+    }
+  }
+  if (S.length && S.length < 16){
+    let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+    for (const p of S){ bx0 = Math.min(bx0, p[0]); by0 = Math.min(by0, p[1]); bx1 = Math.max(bx1, p[0]); by1 = Math.max(by1, p[1]); }
+    const e = 2 * cell, x0 = Math.max(gx0 + 3 * cell, bx0 - e), y0 = Math.max(gy0 + 3 * cell, by0 - e);
+    const x1 = Math.max(x0 + 4 * cell, Math.min(W - gx0 - 3 * cell, bx1 + e));
+    const y1 = Math.max(y0 + 4 * cell, Math.min(H - gy0 - 3 * cell, by1 + e));
+    S.length = 0;
+    S.push(...perim(x0, y0, x1, y1));
+  }
+  if (!S.length) S.push(...perim(gx0 + 3 * cell, gy0 + 3 * cell, W - gx0 - 3 * cell, H - gy0 - 3 * cell));
+  const K = S.length;
+  // seed row: rolled from the seed — the path is yours, the texture is
+  // the rule's; nothing about stroke weight or pressure enters here
+  const rr = mulberry32((seed ^ 0x1D5E) >>> 0);
+  let bits = Array.from({ length: K }, () => rr() < Math.max(0.15, dens) ? 1 : 0);
+  if (!bits.some(Boolean)) bits[K >> 1] = 1;
+  // palindrome row on a cylinder — genCA's own mirror discipline, no seam
+  const R = new Uint8Array(K);
+  for (let i = 0; i < K; i++) R[i] = bits[Math.min(i, K - 1 - i)];
+  const rbit = (l, c, r2) => (rule >> ((l << 2) | (c << 1) | r2)) & 1;
+  // nearest-feature distance transform (3-4 chamfer, ⅓-cell units):
+  // each node learns its distance to the ink AND which ring sample is nearest
+  const N = nx * ny, INF = 1e9;
+  const D = new Float64Array(N).fill(INF), ID = new Int32Array(N).fill(-1);
+  for (let s = 0; s < K; s++){
+    const i = Math.max(0, Math.min(nx - 1, Math.round((S[s][0] - gx0) / cell)));
+    const j = Math.max(0, Math.min(ny - 1, Math.round((S[s][1] - gy0) / cell)));
+    D[j * nx + i] = 0; ID[j * nx + i] = s;
+  }
+  const relax = (n, m, w) => { const d = D[m] + w; if (d < D[n]){ D[n] = d; ID[n] = ID[m]; } };
+  for (let j = 0; j < ny; j++)
+    for (let i = 0; i < nx; i++){
+      const n = j * nx + i;
+      if (i > 0) relax(n, n - 1, 3);
+      if (j > 0) relax(n, n - nx, 3);
+      if (i > 0 && j > 0) relax(n, n - nx - 1, 4);
+      if (i < nx - 1 && j > 0) relax(n, n - nx + 1, 4);
+    }
+  for (let j = ny - 1; j >= 0; j--)
+    for (let i = nx - 1; i >= 0; i--){
+      const n = j * nx + i;
+      if (i < nx - 1) relax(n, n + 1, 3);
+      if (j < ny - 1) relax(n, n + nx, 3);
+      if (i < nx - 1 && j < ny - 1) relax(n, n + nx + 1, 4);
+      if (i > 0 && j < ny - 1) relax(n, n + nx - 1, 4);
+    }
+  // generations = distance from your ink; the ring index folds palindromic
+  let gMax = 0;
+  const gi0 = new Int32Array(N), ki = new Int32Array(N);
+  for (let n = 0; n < N; n++){
+    const g = Math.round(D[n] / 3);
+    gi0[n] = g; if (g > gMax) gMax = g;
+    ki[n] = Math.min(ID[n], K - 1 - ID[n]);
+  }
+  const gens = [R];
+  let cur = R;
+  for (let g = 1; g <= gMax; g++){
+    const Nrow = new Uint8Array(K);
+    for (let i = 0; i < K; i++)
+      Nrow[i] = rbit(cur[(i - 1 + K) % K], cur[i], cur[(i + 1) % K]);
+    gens.push(Nrow); cur = Nrow;
+  }
+  return (elemCache = { key, gens, gi0, ki, gMax, K, nx, ny, gx0, gy0, cell });
+}
+let tabDrawing = false, tabLast = null, tabQueued = false, curStroke = null;
+function tabRenderSoon(){                             // live, but one render per frame
+  if (tabQueued) return; tabQueued = true;
+  requestAnimationFrame(() => { tabQueued = false; render(); });
+}
+function padInkWire(ink){
+  const ctx = ink.getContext('2d'), W = padBuilt.W, H = padBuilt.H;
+  const pos = e => {
+    const rc = ink.getBoundingClientRect();
+    return { x: (e.clientX - rc.left) * W / rc.width, y: (e.clientY - rc.top) * H / rc.height };
+  };
+  const dot = (a, b) => {                             // constant hairline: a centreline indicator,
+    ctx.strokeStyle = 'rgba(110,168,201,.6)';         // never an input — the CA reads the path only
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    inkRev++;
+    if (curStroke) curStroke.push([b.x, b.y]);
+  };
+  ink.onpointerdown = e => {
+    e.preventDefault(); ink.setPointerCapture(e.pointerId);
+    tabDrawing = true; tabLast = pos(e);
+    curStroke = [[tabLast.x, tabLast.y]];
+    strokes.push(curStroke);
+    dot(tabLast, { x: tabLast.x + 0.01, y: tabLast.y });   // tap = dot
+  };
+  ink.onpointermove = e => {
+    if (!tabDrawing) return;
+    for (const ev of (e.getCoalescedEvents ? e.getCoalescedEvents() : [e])){
+      const pt = pos(ev);
+      if (tabLast) dot(tabLast, pt);
+      tabLast = pt;
+    }
+    tabRenderSoon();
+  };
+  const up = () => { if (!tabDrawing) return; tabDrawing = false; tabLast = null; curStroke = null; render(); };
+  ink.onpointerup = up; ink.onpointercancel = up;
+}
+function renderPad(){
+  const host = $('padStage');
+  const W = Math.max(160, Math.round(host.clientWidth) || 828);
+  const H = Math.max(160, Math.round(host.clientHeight) || 440);
+  if (!padBuilt || padBuilt.W !== W || padBuilt.H !== H){
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('xmlns', svgNS);
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    const ink = document.createElement('canvas');
+    ink.id = 'padInk';
+    ink.width = Math.round(W * dpr); ink.height = Math.round(H * dpr);
+    const ictx = ink.getContext('2d');
+    ictx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (padBuilt){                                // the drawing survives resizes — bitmap and stroke log alike
+      ictx.drawImage(padBuilt.ink, 0, 0, W, H);
+      const kw = W / padBuilt.W, kh = H / padBuilt.H;
+      strokes.forEach(st => st.forEach(q => { q[0] *= kw; q[1] *= kh; }));
+      inkRev++;
+    }
+    host.innerHTML = '';
+    host.appendChild(ink); host.appendChild(svg);                 // ink UNDER, evolved lines OVER
+    padBuilt = { svg, ink, W, H, dpr };
+    padApplyInkVis();
+    padInkWire(ink);
+  }
+  const { svg } = padBuilt;
+  const t0 = performance.now();
+  const cell = Math.max(2.4, Math.min(10, state.detail));
+  // blank rule rolls a lively one from the seed — 🎲 / R rerolls it
+  const rule = state.rule != null ? (Math.round(state.rule) & 255)
+    : PAD_RULES[Math.floor(mulberry32(state.seed ^ 0xCAFE)() * PAD_RULES.length)];
+  const E = elemField(W, H, cell, rule, state.dens, state.seed);
+  const { nx, ny, gx0, gy0, gens, gi0, ki, gMax, K } = E;
+  // the studio's own phase: shells flow away from the ink (tri-fold)
+  const p = state.z * state.rate, per2 = 2 * gMax || 1;
+  let V = new Float64Array(nx * ny);
+  let alive = 0;
+  for (let n = 0; n < V.length; n++){
+    let t = (gi0[n] + p) % per2; if (t < 0) t += per2;
+    const g = Math.min(gMax, Math.round(t > gMax ? per2 - t : t));
+    const a = gens[g][ki[n]];
+    V[n] = a - 0.5; alive += a;
+  }
+  const blurPasses = [0, 0, 1, 2][Math.max(0, Math.min(3, state.organic))];
+  for (let pass = 0; pass < blurPasses; pass++){
+    const Hb = new Float64Array(nx * ny);
+    for (let j = 0; j < ny; j++){
+      const rb = j * nx;
+      for (let i = 0; i < nx; i++){
+        const im = Math.max(0, i - 1), ip = Math.min(nx - 1, i + 1);
+        Hb[rb + i] = (V[rb + im] + 2 * V[rb + i] + V[rb + ip]) / 4;
+      }
+    }
+    for (let i = 0; i < nx; i++)
+      for (let j = 0; j < ny; j++){
+        const jm = Math.max(0, j - 1), jp = Math.min(ny - 1, j + 1);
+        V[j * nx + i] = (Hb[jm * nx + i] + 2 * Hb[j * nx + i] + Hb[jp * nx + i]) / 4;
+      }
+  }
+  const margin = Math.max(2, state.standoff);
+  const gx1 = gx0 + (nx - 1) * cell, gy1 = gy0 + (ny - 1) * cell;
+  const LEVEL = 0.03;
+  const G = new Float64Array(nx * ny);
+  for (let j = 0; j < ny; j++){
+    const y = gy0 + j * cell;
+    for (let i = 0; i < nx; i++){
+      const n = j * nx + i, x = gx0 + i * cell;
+      const tA = Math.min(x - gx0, y - gy0, gx1 - x, gy1 - y) / margin;
+      const sA = tA >= 1 ? 1 : tA * tA * (3 - 2 * tA);
+      G[n] = V[n] - (sA >= 1 ? 0 : (1 - sA) * 0.9) - LEVEL;
+    }
+  }
+  // canonical crossings + marching squares + chaining — genCA's own craft
+  const hE = [], vE = [];
+  for (let j = 0; j < ny; j++){ hE.push(new Array(nx).fill(null)); if (j < ny - 1) vE.push(new Array(nx).fill(null)); }
+  for (let j = 0; j < ny; j++){
+    const Gj = j * nx, yj = gy0 + j * cell, vEj = j < ny - 1 ? vE[j] : null,
+          yj1 = j < ny - 1 ? gy0 + (j + 1) * cell : 0, Gj1 = Gj + nx;
+    for (let i = 0; i < nx; i++){
+      const a = G[Gj + i];
+      if (i < nx - 1){
+        const b = G[Gj + i + 1];
+        if ((a > 0) !== (b > 0)){ const t = a / (a - b); hE[j][i] = [gx0 + (i + t) * cell, yj]; }
+      }
+      if (vEj){
+        const d = G[Gj1 + i];
+        if ((a > 0) !== (d > 0)){ const t = a / (a - d); vEj[i] = [gx0 + i * cell, yj + t * cell]; }
+      }
+    }
+  }
+  const segs = [];
+  for (let j = 0; j < ny - 1; j++)
+    for (let i = 0; i < nx - 1; i++){
+      const rb = j * nx, rb1 = rb + nx;
+      const a = G[rb + i], b = G[rb + i + 1], c = G[rb1 + i + 1], d = G[rb1 + i];
+      const idx = (a > 0 ? 1 : 0) | (b > 0 ? 2 : 0) | (c > 0 ? 4 : 0) | (d > 0 ? 8 : 0);
+      if (idx === 0 || idx === 15) continue;
+      const T = hE[j][i], R = vE[j][i + 1], B = hE[j + 1][i], Lv = vE[j][i];
+      const cv = (a + b + c + d) / 4;
+      let pr;
+      switch (idx){
+        case 1: case 14: pr = [[Lv, T]]; break;
+        case 2: case 13: pr = [[T, R]]; break;
+        case 3: case 12: pr = [[Lv, R]]; break;
+        case 4: case 11: pr = [[R, B]]; break;
+        case 6: case 9:  pr = [[T, B]]; break;
+        case 7: case 8:  pr = [[Lv, B]]; break;
+        case 5:  pr = cv > 0 ? [[Lv, T], [R, B]] : [[T, R], [Lv, B]]; break;
+        case 10: pr = cv > 0 ? [[T, R], [Lv, B]] : [[Lv, T], [R, B]]; break;
+      }
+      for (const [e1, e2] of pr) segs.push([e1, e2]);
+    }
+  let lines = chainSegs(segs);
+  const qlen = Lc => Math.round((() => { let s = 0; for (let i = 1; i < Lc.pts.length; i++) s += Math.hypot(Lc.pts[i][0] - Lc.pts[i - 1][0], Lc.pts[i][1] - Lc.pts[i - 1][1]); return s; })() * 8) / 8;
+  lines = lines.filter(Lc => qlen(Lc) > cell * 2.2 && Lc.pts.length > 3);
+  const lens = lines.map(qlen);
+  const sorted = [...lens].sort((x, y) => y - x);
+  const medLen = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.62))] || 0;
+  const body = ornBody(W, H) * (state.bodyW != null ? state.bodyW : 1);
+  const per = state.organic === 0 ? 0 : Math.max(2, Math.round(state.smooth));
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  const mkPath = (d, sw) => {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    el.setAttribute('d', d);
+    el.setAttribute('fill', 'none');
+    el.setAttribute('stroke', 'currentColor');
+    el.setAttribute('stroke-width', sw);
+    el.setAttribute('stroke-linecap', 'round');
+    el.setAttribute('stroke-linejoin', 'round');
+    return el;
+  };
+  for (let i = 0; i < lines.length; i++){
+    const Lc = lines[i];
+    svg.appendChild(mkPath(per === 0 ? dPts(Lc.pts, Lc.closed)
+                                     : dPts(crSample(Lc.pts, Lc.closed, 0.8, per), Lc.closed),
+                           lens[i] >= medLen ? body : body * 0.55));   // figure / ground
+  }
+  $('status').textContent = `pad/rule ${rule} · ring ${K} · g ≤ ${gMax} · ${alive} cells · ${lines.length} lines · ${(performance.now() - t0).toFixed(1)} ms`;
+}
+let padInkHidden = false;                  // origin layer visibility — survives canvas rebuilds
+function padApplyInkVis(){
+  if (padBuilt) padBuilt.ink.style.opacity = padInkHidden ? '0' : '';
+  $('tabPadInk').textContent = padInkHidden ? '◑ lace only' : '◐ strokes';
+}
+$('tabPadClear').onclick = () => {         // full reset: empty pad, strokes visible, phase home
+  if (!padBuilt) return;
+  padBuilt.ink.getContext('2d').clearRect(0, 0, padBuilt.W, padBuilt.H);
+  strokes = []; inkRev++;
+  padInkHidden = false;
+  state.z = 0; state.drift = false;
+  $('zsel').value = 0; $('zval').textContent = '0.0';
+  $('driftBtn').textContent = '▶ drift';
+  padApplyInkVis();
+  renderPad();
+};
+$('tabPadInk').onclick = () => {           // hide the origin layer — the pen keeps working
+  padInkHidden = !padInkHidden;
+  padApplyInkVis();
+};
+addEventListener('resize', () => { if (state.tab === 'pad') render(); });
+
 /* keyboard */
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
@@ -2291,7 +2753,7 @@ function buildScrollTest(){
     let res = { paths: [] };
     try {
       res = makeOrnament('ca', W, H, rec.seed, {
-        variant: bands ? 'bands' : 'frame', sym: state.sym, seedProc: state.seedProc, readout: state.readout, z, inner,
+        variant: bands ? 'bands' : 'frame', sym: state.sym, seedProc: state.seedProc, drawnRow: state.seedProc === 'draw' ? (padRow || PAD_EMPTY) : null, readout: state.readout, z, inner,
         rule: state.rule, dens: state.dens, rate: state.rate, standoff: state.standoff,
         padInner: state.padInner, padOuter: state.padOuter,
         detail: state.detail, smooth: state.smooth, organic: state.organic, bodyW: state.bodyW,
@@ -2324,12 +2786,28 @@ function buildScrollTest(){
 }
 
 /* tabs */
-$('tabStudio').onclick = () => { state.tab = 'studio'; $('tabStudio').classList.add('on'); $('tabScroll').classList.remove('on'); $('paper').style.display = ''; $('scrolltest').style.display = 'none'; updateRankVis(); };
-$('tabScroll').onclick = () => {
-  state.tab = 'scroll'; $('tabScroll').classList.add('on'); $('tabStudio').classList.remove('on');
-  $('paper').style.display = 'none'; $('scrolltest').style.display = '';
-  buildScrollTest(); updateRankVis();
+const setTab = t => {
+  state.tab = t;
+  $('tabStudio').classList.toggle('on', t === 'studio');
+  $('tabScroll').classList.toggle('on', t === 'scroll');
+  $('tabPad').classList.toggle('on', t === 'pad');
+  $('paper').style.display = t === 'studio' ? '' : 'none';
+  $('scrolltest').style.display = t === 'scroll' ? '' : 'none';
+  $('padtab').classList.toggle('show', t === 'pad');
+  updateRankVis();
+  // the pad grows around your strokes like frames grow around articles:
+  // no procs, no readout (the CA picture IS the placement), no sym fold
+  // (the ring is your own drawing, palindrome-seamed) — the rest applies
+  syncSurveyUI();
+  ['seedProc', 'readout', 'sym'].forEach(id => {
+    const el = $(id); if (el) el.disabled = el.disabled || t === 'pad';
+  });
+  if (t === 'scroll') buildScrollTest();
+  if (t === 'pad') renderPad();
 };
+$('tabStudio').onclick = () => setTab('studio');
+$('tabScroll').onclick = () => setTab('scroll');
+$('tabPad').onclick = () => setTab('pad');
 
 syncSurveyUI();
 render();

@@ -194,15 +194,26 @@ function genCA(w, h, seed, o){
   const cell = o.detail != null
     ? Math.max(2.4, Math.min(10, o.detail))
     : Math.max(4, Math.min(10, strip / 3.4));
-  const nx = Math.floor(w / cell) + 2, ny = Math.floor(h / cell) + 2;
+  // ONE square unit: the marching cells are exactly cell × cell — the
+  // same length the CA readout divides by (ring step AND generation
+  // step) — so the automaton is sampled at its own pitch, 1:1 in both
+  // axes: no anisotropic sx×sy rectangles, no skipped or doubled cells
+  // (the resampling smear the noise-readout notes warn about). cell
+  // rarely divides w or h exactly, so the remainder is split to both
+  // edges (gx0 = r/2): node positions stay mirror-symmetric about the
+  // frame centre, which the twin discipline (canonical crossings,
+  // mirror-invariant chaining, twin-safe caps) stands on. The grid then
+  // stops r/2 short of the frame edges, so the window seals against the
+  // GRID extent (gx0…gx1, gy0…gy1), not the frame — every contour still
+  // closes inside the evaluated area, nothing dangles at the boundary.
+  const nx = Math.floor(w / cell) + 1, ny = Math.floor(h / cell) + 1;
   // node coordinates precomputed once — gx/gy were pure functions of the
   // index, evaluated nx·ny times per pass (field, window, crossings)
   const XS = new Float64Array(nx), YS = new Float64Array(ny);
-  {
-    const sx = w / (nx - 1), sy = h / (ny - 1);
-    for (let i = 0; i < nx; i++) XS[i] = Math.min(w, i * sx);
-    for (let j = 0; j < ny; j++) YS[j] = Math.min(h, j * sy);
-  }
+  const gx0 = (w - (nx - 1) * cell) / 2, gx1 = w - gx0;
+  const gy0 = (h - (ny - 1) * cell) / 2, gy1 = h - gy0;
+  for (let i = 0; i < nx; i++) XS[i] = gx0 + i * cell;
+  for (let j = 0; j < ny; j++) YS[j] = gy0 + j * cell;
 
   // ---- the field IS a cellular automaton (Wolfram rule on a cylinder) ----
   // z does NOT advance the generation window — that would merely pan the
@@ -238,11 +249,14 @@ function genCA(w, h, seed, o){
   // fixed 1–4 low carriers were page-sized on site rings). u ∈ [0,1] is
   // the mirrored ring coordinate; procedures see only u, so the row stays
   // mirror-symmetric and wrap-continuous by construction. Pin via
-  // o.seedProc; null rolls one per genome.
+  // o.seedProc; null rolls one per genome. An eighth source, draw,
+  // bypasses the library: o.drawnRow (the studio stylus pad) supplies the
+  // seed curve directly, M samples of it over u ∈ [0,1].
   const cycPx = ringN * cell;                    // ring circumference in px
   const wl = (a, b) => cycPx / rrange(r, a, b);  // wavelength px → cycles
   const PROCS = ['harm', 'fm', 'square', 'chirp', 'noise', 'walk', 'pulse'];
-  const proc = PROCS.includes(o.seedProc) ? o.seedProc : pick(r, PROCS);
+  const proc = o.drawnRow && o.drawnRow.length >= 8 ? 'draw'
+             : PROCS.includes(o.seedProc) ? o.seedProc : pick(r, PROCS);
   const ihash = (a, b) => { let x = Math.imul(a ^ 0x9E3779B9, 0x85EBCA6B) ^ Math.imul(b + 0x6D2B79F5, 0xC2B2AE35); x = Math.imul(x ^ (x >>> 15), 0x27D4EB2F); return ((x ^ (x >>> 13)) >>> 0) / 4294967296; };
   const sstep01 = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
   // periodic value noise, 4 octaves, seeded; slides with pp so z drifts it
@@ -262,7 +276,21 @@ function genCA(w, h, seed, o){
     };
   };
   let rowEval;
-  if (proc === 'noise'){
+  if (proc === 'draw'){
+    // your own hand: o.drawnRow = the seed curve sampled over u ∈ [0,1]
+    // (pad top = +1, bottom = −1 — the same waveform the procedures
+    // synthesize). Linear interpolation between samples; drift slides the
+    // read window with a triangle fold, so the curve travels the ring and
+    // ping-pongs at the pad's edges — continuous and mirrored by
+    // construction, like every other source.
+    const D = o.drawnRow, M = D.length;
+    const dr = rrange(r, 0.05, 0.25) * (r() < 0.5 ? 1 : -1);
+    const tri = t => { const fr = ((t % 2) + 2) % 2; return fr <= 1 ? fr : 2 - fr; };
+    rowEval = (u, pp) => {
+      const x = tri(u + pp * dr) * (M - 1), i = Math.floor(x), t = x - i;
+      return D[i] * (1 - t) + D[Math.min(M - 1, i + 1)] * t;
+    };
+  } else if (proc === 'noise'){
     rowEval = vnoise((r() * 1e9) | 0);
   } else if (proc === 'walk'){
     const kn = Math.max(3, Math.round(wl(60, 160))), vs = [], vs2 = [];
@@ -913,6 +941,18 @@ function genCA(w, h, seed, o){
   const NNODE = nx * ny;
   let V = new Float64Array(NNODE);
   const G = new Float64Array(NNODE);
+  // the studio pad's stylus stencil: o.ink (x, y) → ink density in [0,1],
+  // sampled once onto the node grid. The gate multiplies the window, so
+  // contours live only where you drew — the automaton supplies the lines,
+  // the hand supplies the placement. Hooked HERE, not at the seed: every
+  // readout only chooses which cells a stroke's interior reads, so no
+  // readout can re-place or wipe the drawing. null = no gate, bit-for-bit
+  // the site behaviour.
+  let INKG = null;
+  if (typeof o.ink === 'function'){
+    INKG = new Float64Array(NNODE);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) INKG[j * nx + i] = o.ink(XS[i], YS[j]);
+  }
   for (let j = 0; j < ny; j++){
     const sy = FSY[j], ty = FTY[j], dy = DYY[j];
     const gvRow = GV ? j * nx : 0, rowBase = j * nx, y = YS[j];
@@ -994,11 +1034,11 @@ function genCA(w, h, seed, o){
         // so the hypot (measurably the slow call here) is skipped for most
         // nodes with bit-identical results
         const dI = dx === 0 || dy === 0 ? dx + dy : Math.hypot(dx, dy);
-        const tA = Math.min(x, y, w - x, h - y) / margin;
+        const tA = Math.min(x - gx0, y - gy0, gx1 - x, gy1 - y) / margin;
         const sA = tA >= 1 ? 1 : tA * tA * (3 - 2 * tA);
         const tB = dI / margin;
         const sB = tB >= 1 ? 1 : tB * tB * (3 - 2 * tB);
-        const win = Math.min(sA, sB);
+        const win = Math.min(sA, sB) * (INKG ? INKG[n] : 1);
         G[n] = (win >= 1 ? val : val - (1 - win) * 0.9) - LEVEL;
       }
     }
@@ -1026,11 +1066,11 @@ function genCA(w, h, seed, o){
       for (let i = 0; i < nx; i++){
         const x = XS[i], dx = DXX[i];
         const dI = dx === 0 || dy === 0 ? dx + dy : Math.hypot(dx, dy);
-        const tA = Math.min(x, y, w - x, h - y) / margin;
+        const tA = Math.min(x - gx0, y - gy0, gx1 - x, gy1 - y) / margin;
         const sA = tA >= 1 ? 1 : tA * tA * (3 - 2 * tA);
         const tB = dI / margin;
         const sB = tB >= 1 ? 1 : tB * tB * (3 - 2 * tB);
-        const win = Math.min(sA, sB);
+        const win = Math.min(sA, sB) * (INKG ? INKG[rb + i] : 1);
         const v = V[rb + i];
         G[rb + i] = (win >= 1 ? v : v - (1 - win) * 0.9) - LEVEL;
       }

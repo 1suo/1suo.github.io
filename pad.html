@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+<meta name="theme-color" content="#0b0c10"/>
+<title>Ornament pad</title>
+<style>
+  :root{
+    --chrome-bg:#0b0c10; --chrome-fg:#e6eef6; --chrome-cell:#0f1724; --chrome-line:#1d2a3a;
+    --accent:#6ea8c9; --paper:#fbfaf7; --ink:#22242a;
+    --tb:calc(env(safe-area-inset-bottom, 0px)); --tt:calc(env(safe-area-inset-top, 0px));
+  }
+  @media (prefers-color-scheme: dark){ :root{ --paper:#14161a; --ink:#d8dee6; } }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden}
+  body{height:100dvh;background:var(--chrome-bg);color:var(--chrome-fg);
+       font:14px/1.45 Inter,system-ui,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
+
+  header{display:flex;gap:10px;align-items:baseline;padding:calc(8px + var(--tt)) 14px 8px;
+         background:rgba(2,6,23,.72);border-bottom:1px solid var(--chrome-line);flex:none}
+  header .t{font-weight:600;letter-spacing:.04em}
+  .status{font:10.5px/1.4 "Roboto Mono",monospace;color:#8aa2b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+
+  #stage{position:relative;flex:1;min-height:0;background:var(--paper);color:var(--ink);
+         touch-action:none;overflow:hidden;--orn-bg:var(--paper)}
+  #stage svg{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+  #ink{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
+
+  .toolbar{flex:none;display:flex;gap:8px;justify-content:space-between;
+           padding:10px 14px calc(10px + var(--tb));background:rgba(2,6,23,.72);border-top:1px solid var(--chrome-line)}
+  .toolbar button{width:50px;height:50px;border-radius:14px;background:var(--chrome-cell);color:var(--chrome-fg);
+                  border:1px solid var(--chrome-line);font-size:21px;cursor:pointer;padding:0}
+  .toolbar button:active{background:#0d2531;border-color:var(--accent)}
+  .toolbar button.on{border-color:var(--accent);background:#0d2531}
+
+  #backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s;z-index:8}
+  #backdrop.open{opacity:1;pointer-events:auto}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:9;background:#0a0e16;border:1px solid var(--chrome-line);border-bottom:none;
+         border-radius:18px 18px 0 0;max-height:72dvh;overflow-y:auto;padding:10px 18px calc(18px + var(--tb));
+         transform:translateY(105%);transition:transform .28s cubic-bezier(.3,.9,.3,1);pointer-events:none}
+  .sheet.open{transform:translateY(0);pointer-events:auto}
+  .sheet h3{margin:14px 0 6px;font:600 11px/1 Inter,system-ui;letter-spacing:.12em;text-transform:uppercase;color:#7d93a8}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
+  .row label{font-size:12px;color:#8aa2b8;min-width:74px}
+  input[type=number]{background:#0d1420;color:var(--chrome-fg);border:1px solid var(--chrome-line);border-radius:8px;
+                     padding:9px 10px;font:14px "Roboto Mono",monospace;width:110px;user-select:text}
+  input[type=range]{flex:1;accent-color:var(--accent);min-width:120px;height:34px}
+  .val{font:11.5px "Roboto Mono",monospace;color:#7d93a8;min-width:46px;text-align:right}
+  .btn{background:#06202b;color:var(--chrome-fg);border:1px solid rgba(255,255,255,.08);padding:10px 14px;
+       border-radius:10px;cursor:pointer;font-size:13px}
+  .btn:active{background:#0a3245}
+  .seg{display:flex;gap:6px}
+  .seg button{flex:1;background:var(--chrome-cell);color:#a8bccd;border:1px solid var(--chrome-line);border-radius:9px;
+              padding:9px 4px;font-size:12px;cursor:pointer}
+  .seg button.on{border-color:var(--accent);color:#e6eef6;background:#0d2531}
+  .hint{font-size:11px;color:#5f7288;margin-top:2px}
+  .toast{position:fixed;bottom:calc(86px + var(--tb));left:50%;transform:translateX(-50%);background:#123243;color:#dff1fb;
+         border:1px solid var(--accent);padding:8px 14px;border-radius:9px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:10}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="t">Ornament pad</div>
+  <div class="status" id="status"></div>
+</header>
+
+<div id="stage"></div>
+
+<div class="toolbar">
+  <button id="undoBtn" title="undo stroke">↩</button>
+  <button id="inkBtn" title="show / hide your strokes">◐</button>
+  <button id="diceBtn" title="reroll seed + rule">🎲</button>
+  <button id="driftBtn" title="flow the shells">▶</button>
+  <button id="clearBtn" title="clear + reset">✕</button>
+  <button id="setBtn" title="settings">⚙</button>
+</div>
+
+<div id="backdrop"></div>
+<div class="sheet" id="sheet">
+  <h3>Field</h3>
+  <div class="row"><label>rule</label><input type="number" id="rule" min="0" max="255" inputmode="numeric" placeholder="auto"/><span class="hint">blank rolls a lively one</span></div>
+  <div class="row"><label>density</label><input type="range" id="dens" min="0.15" max="0.6" step="0.01" value="0.4"/><span class="val" id="densv">0.40</span></div>
+  <div class="row"><label>seed</label><input type="number" id="seed" value="42" inputmode="numeric"/><span class="hint">🎲 rerolls</span></div>
+  <h3>Phase</h3>
+  <div class="row"><label>z</label><input type="range" id="zsel" min="0" max="600" step="0.1" value="0"/><span class="val" id="zval">0.0</span></div>
+  <div class="row"><label>drift speed</label><input type="range" id="driftSpd" min="0.005" max="0.4" step="0.005" value="0.03"/><span class="val" id="driftSpdv">0.030</span></div>
+  <h3>Line craft</h3>
+  <div class="row"><label>style</label>
+    <div class="seg" id="organic">
+      <button data-v="0" class="on">geometric</button><button data-v="1">crisp</button>
+      <button data-v="2">soft</button><button data-v="3">organic</button>
+    </div>
+  </div>
+  <div class="row"><label>detail</label><input type="range" id="detail" min="2.5" max="8" step="0.25" value="4"/><span class="val" id="detailv">4.0</span></div>
+  <div class="row"><label>smooth</label><input type="range" id="smooth" min="2" max="8" step="1" value="4"/><span class="val" id="smoothv">4</span></div>
+  <div class="row"><label>weight</label><input type="range" id="bodyW" min="0.5" max="2.5" step="0.05" value="1"/><span class="val" id="bodyWv">1.00</span></div>
+  <h3>Share</h3>
+  <div class="row">
+    <button class="btn" id="copyBtn">Copy SVG</button>
+    <a class="btn" href="ornament.html" style="text-decoration:none">Studio ↗</a>
+  </div>
+  <div class="hint">your strokes are the article — the rule grows away from their path in every direction; width and pressure never enter the CA. Blank pad grows a frame from the page edge.</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   Ornament pad — the mobile face of the studio's Pad tab. Same engine:
+   your strokes, in draw order, form the automaton's ring; generation =
+   distance from the path; the seed row rolls from the seed; the
+   palindrome fold keeps the ring seam-free; z·rate flows the shells.
+   Engine pieces (chainSegs, crSample, craft) are copied verbatim from
+   ornament.html — keep them in sync.
+   ===================================================================== */
+const f2 = n => Math.round(n * 100) / 100;
+function mulberry32(a){ return function(){ a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function dPts(pts, closed){
+  if (pts.length < 2) return '';
+  let d = `M${f2(pts[0][0])} ${f2(pts[0][1])}`;
+  for (let i = 1; i < pts.length; i++) d += `L${f2(pts[i][0])} ${f2(pts[i][1])}`;
+  return closed ? d + 'Z' : d;
+}
+// chain open segments [[a,b],...] into polylines; endpoints with equal keys close
+function chainSegs(segs, mirrorX = Infinity){
+  const nkey = p => Math.round(p[0] * 10) * 4194304 + Math.round(p[1] * 10);
+  const farKey = c => {
+    const p = segs[c.i][c.end ? 0 : 1];
+    return [Math.min(p[0], mirrorX - p[0]), p[1]];
+  };
+  const map = new Map();
+  segs.forEach((s, i) => { for (const end of [0, 1]) { const k = nkey(s[end]); if (!map.has(k)) map.set(k, []); map.get(k).push({ i, end }); } });
+  const used = new Array(segs.length).fill(false);
+  const cands = [];
+  const out = [];
+  for (let i = 0; i < segs.length; i++){
+    if (used[i]) continue;
+    used[i] = true;
+    const line = [segs[i][0], segs[i][1]];
+    const k0 = nkey(line[0]);
+    let guard = segs.length + 2;
+    let closed = false;
+    while (guard--){
+      const k = nkey(line[line.length - 1]);
+      const bucket = map.get(k);
+      if (!bucket) break;
+      let c = null;
+      for (let q = 0; q < bucket.length; q++)
+        if (!used[bucket[q].i]){ if (c) { c = null; break; } c = bucket[q]; }
+      if (!c){
+        if (bucket.length < 2) break;
+        cands.length = 0;
+        for (let q = 0; q < bucket.length; q++) if (!used[bucket[q].i]) cands.push(bucket[q]);
+        if (!cands.length) break;
+        cands.sort((A, B) => {
+          const a = farKey(A), b = farKey(B);
+          return a[0] - b[0] || a[1] - b[1];
+        });
+        c = cands[0];
+      }
+      used[c.i] = true;
+      const nxt = segs[c.i][c.end ? 0 : 1];
+      if (nkey(nxt) === k0) { closed = true; break; }
+      line.push(nxt);
+    }
+    out.push({ pts: line, closed });
+  }
+  return out;
+}
+const ornBody = (w, h) => Math.max(0.6, Math.min(2.0, Math.min(w, h) / 140));
+// Catmull-Rom through the points — interpolating, damped (k<1)
+function crSample(pts, closed, k = 0.85, per = 3){
+  const n = pts.length, out = [];
+  if (n < 3) return pts.slice();
+  const idx = i => closed ? (i + n) % n : Math.max(0, Math.min(n - 1, i));
+  const segs = closed ? n : n - 1;
+  for (let i = 0; i < segs; i++){
+    const p0 = pts[idx(i - 1)], p1 = pts[idx(i)], p2 = pts[idx(i + 1)], p3 = pts[idx(i + 2)];
+    const c1x = p1[0] + (p2[0] - p0[0]) * k / 6, c1y = p1[1] + (p2[1] - p0[1]) * k / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) * k / 6, c2y = p2[1] - (p3[1] - p1[1]) * k / 6;
+    for (let j = 0; j < per; j++){
+      const t = j / per, u = 1 - t, t2 = t * t, t3 = t2 * t;
+      out.push([u*u*u*p1[0] + 3*u*u*t*c1x + 3*u*t*t*c2x + t3*p2[0],
+                u*u*u*p1[1] + 3*u*u*t*c1y + 3*u*t*t*c2y + t3*p2[1]]);
+    }
+  }
+  if (!closed) out.push(pts[n - 1].slice());
+  return out;
+}
+
+/* ---------- state ---------- */
+const state = {
+  rule: null, seed: 42, dens: 0.4,
+  z: 0, drift: false, driftSpd: 0.03,
+  organic: 0, detail: 4, smooth: 4, bodyW: 1, standoff: 4,
+};
+const PAD_RULES = [30, 45, 105, 110, 150];
+let padBuilt = null, strokes = [], inkRev = 0, padInkHidden = false;
+let drawing = false, last = null, queued = false, curStroke = null;
+
+/* ---------- ring field: your strokes are the article ---------- */
+let elemCache = null;
+function elemField(W, H, cell, rule, dens, seed){
+  const key = [W, H, cell, rule, dens, seed, inkRev].join('|');
+  if (elemCache && elemCache.key === key) return elemCache;
+  const nx = Math.floor(W / cell) + 1, ny = Math.floor(H / cell) + 1;
+  const gx0 = (W - (nx - 1) * cell) / 2, gy0 = (H - (ny - 1) * cell) / 2;
+  const perim = (x0, y0, x1, y1) => {
+    const P = [];
+    for (let x = x0; x <= x1; x += cell) P.push([x, y0]);
+    for (let y = y0 + cell; y <= y1; y += cell) P.push([x1, y]);
+    for (let x = x1 - cell; x >= x0; x -= cell) P.push([x, y1]);
+    for (let y = y1 - cell; y > y0; y -= cell) P.push([x0, y]);
+    return P;
+  };
+  const S = [];
+  const emit = (x, y) => {
+    const l = S[S.length - 1];
+    if (l && Math.hypot(x - l[0], y - l[1]) < cell * 0.75) return;
+    if (S.length < 8192) S.push([x, y]);
+  };
+  if (strokes.length){
+    for (const st of strokes){
+      let prev = null;
+      for (const q of st){
+        if (prev){
+          const len = Math.hypot(q[0] - prev[0], q[1] - prev[1]);
+          const steps = Math.max(1, Math.ceil(len / cell));
+          for (let s2 = 1; s2 <= steps; s2++)
+            emit(prev[0] + (q[0] - prev[0]) * s2 / steps, prev[1] + (q[1] - prev[1]) * s2 / steps);
+        } else emit(q[0], q[1]);
+        prev = q;
+      }
+    }
+  }
+  if (S.length && S.length < 16){
+    let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+    for (const p of S){ bx0 = Math.min(bx0, p[0]); by0 = Math.min(by0, p[1]); bx1 = Math.max(bx1, p[0]); by1 = Math.max(by1, p[1]); }
+    const e = 2 * cell, x0 = Math.max(gx0 + 3 * cell, bx0 - e), y0 = Math.max(gy0 + 3 * cell, by0 - e);
+    const x1 = Math.max(x0 + 4 * cell, Math.min(W - gx0 - 3 * cell, bx1 + e));
+    const y1 = Math.max(y0 + 4 * cell, Math.min(H - gy0 - 3 * cell, by1 + e));
+    S.length = 0;
+    S.push(...perim(x0, y0, x1, y1));
+  }
+  if (!S.length) S.push(...perim(gx0 + 3 * cell, gy0 + 3 * cell, W - gx0 - 3 * cell, H - gy0 - 3 * cell));
+  const K = S.length;
+  const rr = mulberry32((seed ^ 0x1D5E) >>> 0);
+  let bits = Array.from({ length: K }, () => rr() < Math.max(0.15, dens) ? 1 : 0);
+  if (!bits.some(Boolean)) bits[K >> 1] = 1;
+  const R = new Uint8Array(K);
+  for (let i = 0; i < K; i++) R[i] = bits[Math.min(i, K - 1 - i)];
+  const rbit = (l, c, r2) => (rule >> ((l << 2) | (c << 1) | r2)) & 1;
+  const N = nx * ny, INF = 1e9;
+  const D = new Float64Array(N).fill(INF), ID = new Int32Array(N).fill(-1);
+  for (let s = 0; s < K; s++){
+    const i = Math.max(0, Math.min(nx - 1, Math.round((S[s][0] - gx0) / cell)));
+    const j = Math.max(0, Math.min(ny - 1, Math.round((S[s][1] - gy0) / cell)));
+    D[j * nx + i] = 0; ID[j * nx + i] = s;
+  }
+  const relax = (n, m, w) => { const d = D[m] + w; if (d < D[n]){ D[n] = d; ID[n] = ID[m]; } };
+  for (let j = 0; j < ny; j++)
+    for (let i = 0; i < nx; i++){
+      const n = j * nx + i;
+      if (i > 0) relax(n, n - 1, 3);
+      if (j > 0) relax(n, n - nx, 3);
+      if (i > 0 && j > 0) relax(n, n - nx - 1, 4);
+      if (i < nx - 1 && j > 0) relax(n, n - nx + 1, 4);
+    }
+  for (let j = ny - 1; j >= 0; j--)
+    for (let i = nx - 1; i >= 0; i--){
+      const n = j * nx + i;
+      if (i < nx - 1) relax(n, n + 1, 3);
+      if (j < ny - 1) relax(n, n + nx, 3);
+      if (i < nx - 1 && j < ny - 1) relax(n, n + nx + 1, 4);
+      if (i > 0 && j < ny - 1) relax(n, n + nx - 1, 4);
+    }
+  let gMax = 0;
+  const gi0 = new Int32Array(N), ki = new Int32Array(N);
+  for (let n = 0; n < N; n++){
+    const g = Math.round(D[n] / 3);
+    gi0[n] = g; if (g > gMax) gMax = g;
+    ki[n] = Math.min(ID[n], K - 1 - ID[n]);
+  }
+  const gens = [R];
+  let cur = R;
+  for (let g = 1; g <= gMax; g++){
+    const Nrow = new Uint8Array(K);
+    for (let i = 0; i < K; i++)
+      Nrow[i] = rbit(cur[(i - 1 + K) % K], cur[i], cur[(i + 1) % K]);
+    gens.push(Nrow); cur = Nrow;
+  }
+  return (elemCache = { key, gens, gi0, ki, gMax, K, nx, ny, gx0, gy0, cell });
+}
+
+/* ---------- render ---------- */
+function render(){
+  const host = document.getElementById('stage');
+  const W = Math.max(120, Math.round(host.clientWidth) || 390);
+  const H = Math.max(120, Math.round(host.clientHeight) || 640);
+  if (!padBuilt || padBuilt.W !== W || padBuilt.H !== H){
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('xmlns', svgNS);
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    const ink = document.createElement('canvas');
+    ink.id = 'ink';
+    ink.width = Math.round(W * dpr); ink.height = Math.round(H * dpr);
+    const ictx = ink.getContext('2d');
+    ictx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (padBuilt){
+      ictx.drawImage(padBuilt.ink, 0, 0, W, H);
+      const kw = W / padBuilt.W, kh = H / padBuilt.H;
+      strokes.forEach(st => st.forEach(q => { q[0] *= kw; q[1] *= kh; }));
+      inkRev++;
+    } else {
+      redrawInk(ictx, W, H);                          // restored strokes, fresh canvas
+    }
+    host.innerHTML = '';
+    host.appendChild(ink); host.appendChild(svg);     // ink UNDER, evolved lines OVER
+    padBuilt = { svg, ink, W, H, dpr };
+    applyInkVis();
+    wireInk(ink);
+  }
+  const { svg } = padBuilt;
+  const t0 = performance.now();
+  const cell = Math.max(2.4, Math.min(10, state.detail));
+  const rule = state.rule != null ? (Math.round(state.rule) & 255)
+    : PAD_RULES[Math.floor(mulberry32(state.seed ^ 0xCAFE)() * PAD_RULES.length)];
+  const E = elemField(W, H, cell, rule, state.dens, state.seed);
+  const { nx, ny, gx0, gy0, gens, gi0, ki, gMax, K } = E;
+  const p = state.z * 0.4;                  // the studio's default rate — phase factor
+  const per2 = 2 * gMax || 1;
+  let V = new Float64Array(nx * ny);
+  let alive = 0;
+  for (let n = 0; n < V.length; n++){
+    let t = (gi0[n] + p) % per2; if (t < 0) t += per2;
+    const g = Math.min(gMax, Math.round(t > gMax ? per2 - t : t));
+    const a = gens[g][ki[n]];
+    V[n] = a - 0.5; alive += a;
+  }
+  const blurPasses = [0, 0, 1, 2][Math.max(0, Math.min(3, state.organic))];
+  for (let pass = 0; pass < blurPasses; pass++){
+    const Hb = new Float64Array(nx * ny);
+    for (let j = 0; j < ny; j++){
+      const rb = j * nx;
+      for (let i = 0; i < nx; i++){
+        const im = Math.max(0, i - 1), ip = Math.min(nx - 1, i + 1);
+        Hb[rb + i] = (V[rb + im] + 2 * V[rb + i] + V[rb + ip]) / 4;
+      }
+    }
+    for (let i = 0; i < nx; i++)
+      for (let j = 0; j < ny; j++){
+        const jm = Math.max(0, j - 1), jp = Math.min(ny - 1, j + 1);
+        V[j * nx + i] = (Hb[jm * nx + i] + 2 * Hb[j * nx + i] + Hb[jp * nx + i]) / 4;
+      }
+  }
+  const margin = Math.max(2, state.standoff);
+  const gx1 = gx0 + (nx - 1) * cell, gy1 = gy0 + (ny - 1) * cell;
+  const LEVEL = 0.03;
+  const G = new Float64Array(nx * ny);
+  for (let j = 0; j < ny; j++){
+    const y = gy0 + j * cell;
+    for (let i = 0; i < nx; i++){
+      const n = j * nx + i, x = gx0 + i * cell;
+      const tA = Math.min(x - gx0, y - gy0, gx1 - x, gy1 - y) / margin;
+      const sA = tA >= 1 ? 1 : tA * tA * (3 - 2 * tA);
+      G[n] = V[n] - (sA >= 1 ? 0 : (1 - sA) * 0.9) - LEVEL;
+    }
+  }
+  const hE = [], vE = [];
+  for (let j = 0; j < ny; j++){ hE.push(new Array(nx).fill(null)); if (j < ny - 1) vE.push(new Array(nx).fill(null)); }
+  for (let j = 0; j < ny; j++){
+    const Gj = j * nx, yj = gy0 + j * cell, vEj = j < ny - 1 ? vE[j] : null,
+          yj1 = j < ny - 1 ? gy0 + (j + 1) * cell : 0, Gj1 = Gj + nx;
+    for (let i = 0; i < nx; i++){
+      const a = G[Gj + i];
+      if (i < nx - 1){
+        const b = G[Gj + i + 1];
+        if ((a > 0) !== (b > 0)){ const t = a / (a - b); hE[j][i] = [gx0 + (i + t) * cell, yj]; }
+      }
+      if (vEj){
+        const d = G[Gj1 + i];
+        if ((a > 0) !== (d > 0)){ const t = a / (a - d); vEj[i] = [gx0 + i * cell, yj + t * cell]; }
+      }
+    }
+  }
+  const segs = [];
+  for (let j = 0; j < ny - 1; j++)
+    for (let i = 0; i < nx - 1; i++){
+      const rb = j * nx, rb1 = rb + nx;
+      const a = G[rb + i], b = G[rb + i + 1], c = G[rb1 + i + 1], d = G[rb1 + i];
+      const idx = (a > 0 ? 1 : 0) | (b > 0 ? 2 : 0) | (c > 0 ? 4 : 0) | (d > 0 ? 8 : 0);
+      if (idx === 0 || idx === 15) continue;
+      const T = hE[j][i], R2 = vE[j][i + 1], B = hE[j + 1][i], Lv = vE[j][i];
+      const cv = (a + b + c + d) / 4;
+      let pr;
+      switch (idx){
+        case 1: case 14: pr = [[Lv, T]]; break;
+        case 2: case 13: pr = [[T, R2]]; break;
+        case 3: case 12: pr = [[Lv, R2]]; break;
+        case 4: case 11: pr = [[R2, B]]; break;
+        case 6: case 9:  pr = [[T, B]]; break;
+        case 7: case 8:  pr = [[Lv, B]]; break;
+        case 5:  pr = cv > 0 ? [[Lv, T], [R2, B]] : [[T, R2], [Lv, B]]; break;
+        case 10: pr = cv > 0 ? [[T, R2], [Lv, B]] : [[Lv, T], [R2, B]]; break;
+      }
+      for (const [e1, e2] of pr) segs.push([e1, e2]);
+    }
+  let lines = chainSegs(segs);
+  const qlen = Lc => Math.round((() => { let s = 0; for (let i = 1; i < Lc.pts.length; i++) s += Math.hypot(Lc.pts[i][0] - Lc.pts[i - 1][0], Lc.pts[i][1] - Lc.pts[i - 1][1]); return s; })() * 8) / 8;
+  lines = lines.filter(Lc => qlen(Lc) > cell * 2.2 && Lc.pts.length > 3);
+  const lens = lines.map(qlen);
+  const sorted = [...lens].sort((x, y) => y - x);
+  const medLen = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.62))] || 0;
+  const body = ornBody(W, H) * (state.bodyW != null ? state.bodyW : 1);
+  const per = state.organic === 0 ? 0 : Math.max(2, Math.round(state.smooth));
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  for (let i = 0; i < lines.length; i++){
+    const Lc = lines[i];
+    const el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    el.setAttribute('d', per === 0 ? dPts(Lc.pts, Lc.closed) : dPts(crSample(Lc.pts, Lc.closed, 0.8, per), Lc.closed));
+    el.setAttribute('fill', 'none');
+    el.setAttribute('stroke', 'currentColor');
+    el.setAttribute('stroke-width', lens[i] >= medLen ? body : body * 0.55);
+    el.setAttribute('stroke-linecap', 'round');
+    el.setAttribute('stroke-linejoin', 'round');
+    svg.appendChild(el);
+  }
+  document.getElementById('status').textContent =
+    `rule ${rule} · ring ${K} · ${alive} cells · ${lines.length} lines · ${(performance.now() - t0).toFixed(0)} ms`;
+}
+
+/* ---------- drawing ---------- */
+function inkStyle(ctx){
+  ctx.strokeStyle = 'rgba(110,168,201,.6)';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+}
+function redrawInk(ctx, W, H){
+  ctx.clearRect(0, 0, W, H);
+  inkStyle(ctx);
+  for (const st of strokes){
+    if (st.length === 1){
+      ctx.beginPath(); ctx.moveTo(st[0][0], st[0][1]); ctx.lineTo(st[0][0] + 0.01, st[0][1]); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(st[0][0], st[0][1]);
+      for (let i = 1; i < st.length; i++) ctx.lineTo(st[i][0], st[i][1]);
+      ctx.stroke();
+    }
+  }
+}
+function wireInk(ink){
+  const ctx = ink.getContext('2d'), W = padBuilt.W, H = padBuilt.H;
+  const pos = e => {
+    const rc = ink.getBoundingClientRect();
+    return { x: (e.clientX - rc.left) * W / rc.width, y: (e.clientY - rc.top) * H / rc.height };
+  };
+  const dot = (a, b) => {
+    inkStyle(ctx);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    inkRev++;
+    if (curStroke) curStroke.push([b.x, b.y]);
+  };
+  ink.onpointerdown = e => {
+    e.preventDefault(); ink.setPointerCapture(e.pointerId);
+    drawing = true; last = pos(e);
+    curStroke = [[last.x, last.y]];
+    strokes.push(curStroke);
+    dot(last, { x: last.x + 0.01, y: last.y });
+  };
+  ink.onpointermove = e => {
+    if (!drawing) return;
+    for (const ev of (e.getCoalescedEvents ? e.getCoalescedEvents() : [e])){
+      const pt = pos(ev);
+      if (last) dot(last, pt);
+      last = pt;
+    }
+    renderSoon();
+  };
+  const up = () => { if (!drawing) return; drawing = false; last = null; curStroke = null; save(); render(); };
+  ink.onpointerup = up; ink.onpointercancel = up;
+}
+function renderSoon(){
+  if (queued) return; queued = true;
+  requestAnimationFrame(() => { queued = false; render(); });
+}
+
+/* ---------- toolbar ---------- */
+function applyInkVis(){
+  if (padBuilt) padBuilt.ink.style.opacity = padInkHidden ? '0' : '';
+  document.getElementById('inkBtn').textContent = padInkHidden ? '◑' : '◐';
+  document.getElementById('inkBtn').classList.toggle('on', padInkHidden);
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1400);
+}
+document.getElementById('undoBtn').onclick = () => {
+  strokes.pop(); inkRev++;
+  if (padBuilt) redrawInk(padBuilt.ink.getContext('2d'), padBuilt.W, padBuilt.H);
+  save(); render();
+};
+document.getElementById('inkBtn').onclick = () => { padInkHidden = !padInkHidden; applyInkVis(); };
+document.getElementById('diceBtn').onclick = () => {
+  state.seed = (Math.random() * 0xffffffff) >>> 0;
+  document.getElementById('seed').value = state.seed;
+  save(); render();
+};
+document.getElementById('driftBtn').onclick = () => {
+  state.drift = !state.drift;
+  const b = document.getElementById('driftBtn');
+  b.textContent = state.drift ? '⏸' : '▶';
+  b.classList.toggle('on', state.drift);
+  if (state.drift) requestAnimationFrame(driftStep);
+};
+function driftStep(){
+  if (!state.drift) return;
+  state.z += state.driftSpd;
+  document.getElementById('zval').textContent = state.z.toFixed(1);
+  document.getElementById('zsel').value = Math.min(600, state.z);
+  render();
+  if (state.drift) requestAnimationFrame(driftStep);
+}
+document.getElementById('clearBtn').onclick = () => {
+  if (!padBuilt) return;
+  padBuilt.ink.getContext('2d').clearRect(0, 0, padBuilt.W, padBuilt.H);
+  strokes = []; inkRev++;
+  padInkHidden = false;
+  state.z = 0; state.drift = false;
+  document.getElementById('zsel').value = 0;
+  document.getElementById('zval').textContent = '0.0';
+  const b = document.getElementById('driftBtn');
+  b.textContent = '▶'; b.classList.remove('on');
+  applyInkVis();
+  save(); render();
+  toast('cleared');
+};
+const sheet = document.getElementById('sheet'), backdrop = document.getElementById('backdrop');
+document.getElementById('setBtn').onclick = () => { sheet.classList.add('open'); backdrop.classList.add('open'); };
+const closeSheet = () => { sheet.classList.remove('open'); backdrop.classList.remove('open'); };
+backdrop.onclick = closeSheet;
+
+/* ---------- settings sheet ---------- */
+document.getElementById('rule').oninput = e => {
+  const v = e.target.value.trim();
+  state.rule = v === '' ? null : Math.max(0, Math.min(255, Math.round(+v)));
+  save(); render();
+};
+document.getElementById('seed').oninput = e => { state.seed = e.target.value >>> 0; save(); render(); };
+const bind = (id, key, fmt) => {
+  const el = document.getElementById(id);
+  el.oninput = () => {
+    state[key] = +el.value;
+    document.getElementById(id + 'v').textContent = fmt(+el.value);
+    save(); render();
+  };
+};
+bind('dens', 'dens', v => v.toFixed(2));
+bind('zsel', 'z', v => v.toFixed(1));
+bind('driftSpd', 'driftSpd', v => v.toFixed(3));
+bind('detail', 'detail', v => v.toFixed(2));
+bind('smooth', 'smooth', v => String(v));
+bind('bodyW', 'bodyW', v => v.toFixed(2));
+document.querySelectorAll('#organic button').forEach(b => {
+  b.onclick = () => {
+    state.organic = +b.dataset.v;
+    document.querySelectorAll('#organic button').forEach(x => x.classList.toggle('on', x === b));
+    save(); render();
+  };
+});
+document.getElementById('copyBtn').onclick = () => {
+  const svg = document.querySelector('#stage svg');
+  if (!svg) return;
+  navigator.clipboard.writeText(svg.outerHTML)
+    .then(() => toast('SVG copied'), () => toast('clipboard blocked'));
+};
+
+/* ---------- persistence ---------- */
+let saveTimer = null;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      const flat = strokes.map(st => st.map(q => [Math.round(q[0] * 10) / 10, Math.round(q[1] * 10) / 10]));
+      localStorage.setItem('ornpad.v1', JSON.stringify({ strokes: flat, state: {
+        seed: state.seed, dens: state.dens, organic: state.organic, detail: state.detail,
+        smooth: state.smooth, bodyW: state.bodyW, rule: state.rule,
+      }}));
+    } catch (e) {}
+  }, 300);
+}
+(function restore(){
+  try {
+    const d = JSON.parse(localStorage.getItem('ornpad.v1'));
+    if (!d) return;
+    if (Array.isArray(d.strokes)) strokes = d.strokes.filter(st => Array.isArray(st) && st.length);
+    if (d.state) Object.assign(state, d.state);
+    document.getElementById('seed').value = state.seed;
+    document.getElementById('rule').value = state.rule != null ? state.rule : '';
+    document.getElementById('dens').value = state.dens;
+    document.getElementById('densv').textContent = state.dens.toFixed(2);
+    document.getElementById('detail').value = state.detail;
+    document.getElementById('detailv').textContent = state.detail.toFixed(2);
+    document.getElementById('smooth').value = state.smooth;
+    document.getElementById('smoothv').textContent = String(state.smooth);
+    document.getElementById('bodyW').value = state.bodyW;
+    document.getElementById('bodyWv').textContent = state.bodyW.toFixed(2);
+    document.querySelectorAll('#organic button').forEach(x => x.classList.toggle('on', +x.dataset.v === state.organic));
+  } catch (e) {}
+})();
+
+/* desktop conveniences */
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'r' || e.key === 'R') document.getElementById('diceBtn').click();
+  else if (e.key === 'd' || e.key === 'D') document.getElementById('driftBtn').click();
+});
+addEventListener('resize', render);
+render();
+</script>
+</body>
+</html>

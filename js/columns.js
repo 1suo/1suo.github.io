@@ -21,7 +21,7 @@
 
   var MIN_COL = 640; // 40rem reading measure — columns never narrower
   var GAP = 64; // 4rem gutter (keep in sync with .mrow's gap in style.css)
-  var VOID_MIN = 160; // minimum side void ≈ ¼ of a column — free space the
+  var VOID_MIN = 80; // minimum side void ≈ ¼ of a column — free space the
                       // grid must leave on each side before adding a column
   var VOID_MAX = 260; // widest side void before columns take the rest
   var VOID_SHARE = 0.07; // void ≈ 7% of the content area, clamped above
