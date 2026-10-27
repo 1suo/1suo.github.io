@@ -1,12 +1,48 @@
 /* Base */
 
+/* sakura assumes a 62.5% root (1rem = 10px); every size below and the
+   px constants in js/columns.js are written against a 100% root. */
+html {
+  font-size: 100%;
+}
+
+/* Whole-app cap: on very large screens the shell (fixed sidebar +
+   content + footer) centers as one --app-max-wide canvas. --app-edge is
+   the empty margin outside the cap — 0 inside it, growing symmetrically
+   past it. Every use below resolves its % against the viewport (the
+   initial containing block for the fixed sidebar; body and #app are
+   full-width), so one token serves all three. */
+:root {
+  --app-max: 2200px;
+  --app-edge: max(0px, calc(50% - var(--app-max) / 2));
+}
+
 body {
   background: transparent;
   color: inherit;
   font-family: "Roboto Serif", serif;
   height: 100vh;
   margin: 0;
+  /* sakura caps and pads the body for standalone pages; the docsify
+     shell (fixed sidebar, .content offset) handles layout here. */
+  max-width: none;
+  padding: 0;
+  font-size: 1.125rem;
 }
+
+/* awsm's responsive ramp, carried over (sakura's own is written for its
+   62.5% root). */
+@media (max-width: 40rem) {
+  body {
+    font-size: calc(1rem + 0.00625 * (100vw - 20rem));
+  }
+}
+@media (max-width: 20rem) {
+  body {
+    font-size: 1.3rem;
+  }
+}
+
 code,
 kbd,
 var,
@@ -31,6 +67,15 @@ body main {
   padding-top: 0;
   position: static;
 }
+/* The reading column: centered and capped at 40rem. awsm.css provided
+   this; js/columns.js lifts the cap via inline styles and relies on the
+   margin: 0 auto for symmetric side voids, and js/site-ornaments.js
+   relies on position: relative. */
+body article {
+  position: relative;
+  max-width: 40rem;
+  margin: 0 auto;
+}
 body .content,
 body .markdown-section {
   background: transparent;
@@ -44,7 +89,7 @@ body .markdown-section {
   padding-top: 10rem;
   /* Tokens with no break opportunities (long links, bare URLs, hashes)
      must wrap at the column edge instead of overflowing it. Code blocks
-     keep their horizontal scroller (awsm's pre { overflow-x: auto }). */
+     keep their horizontal scroller (sakura's pre { overflow-x: auto }). */
   overflow-wrap: anywhere;
 }
 
@@ -52,7 +97,41 @@ body .markdown-section pre {
   overflow-wrap: normal;
 }
 body .content {
-  margin-left: 332px;
+  /* 332px = the fixed sidebar (300px) + its gutters; past --app-max the
+     content keeps its width and the whole shell centers (--app-edge). */
+  margin-left: calc(332px + var(--app-edge));
+  max-width: calc(var(--app-max) - 332px);
+}
+
+/* The signature footer spans the app canvas: left edge under the
+   sidebar's, never full-viewport on very large screens. */
+body > footer {
+  margin-left: var(--app-edge);
+  max-width: var(--app-max);
+}
+
+/* Breadcrumb trail (js/breadcrumbs.js) — one quiet line above the
+   content; js/columns.js skips it when capturing blocks. The li reset
+   keeps sakura's generic `li` spacing out. */
+body .breadcrumbs {
+  font-size: 0.8rem;
+  margin: 0 0 3rem;
+}
+body .breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+body .breadcrumbs li {
+  display: inline;
+  margin: 0;
+}
+body .breadcrumbs li + li::before {
+  content: "/";
+  margin: 0 0.6rem;
+  color: color-mix(in srgb, currentColor 35%, transparent);
 }
 
 /* Paginated newspaper columns — js/columns.js builds screen-tall rows
@@ -84,25 +163,56 @@ body .markdown-section .mcol {
 }
 
 body .markdown-section .mcol > :first-child {
-  margin-top: 0;
+  /* margin-top: 0; */
 }
 
 body .markdown-section .mcol > :last-child {
   margin-bottom: 0;
 }
 
+/* sakura sets a sans stack on headings; the reading column stays serif.
+   The self-scaling 1.25em top margin is awsm's — sakura's flat 3rem was
+   written for its 62.5% root. */
 h1,
 h2,
 h3,
 h4 {
   color: inherit;
+  font-family: inherit;
   margin-bottom: 1rem;
+  margin-top: 1.25em;
 }
 
 h5,
 h6 {
   color: inherit;
+  font-family: inherit;
   margin-bottom: 1rem;
+  margin-top: 1.25em;
+}
+
+/* Vertical rhythm — awsm-era proportions (sakura's 25px paragraph gaps
+   were a restatement for its root, not a requirement of the swap). */
+p {
+  margin: 1em 0;
+}
+p:first-child {
+  margin-top: 0;
+}
+p:last-child {
+  margin-bottom: 0;
+}
+p + ul,
+p + ol {
+  margin-top: -0.75em;
+}
+ul,
+ol,
+img,
+video,
+pre,
+table {
+  margin-bottom: 1em;
 }
 
 code {
@@ -120,6 +230,11 @@ pre {
   /* border-radius: 8px; */
   background-color: #77777733;
   opacity: 0.9;
+  /* A code block never sits closer to what precedes it than one line of
+     body text (line-height × body size). sakura gives pre a zero top
+     margin, so the block hugged its predecessor tighter than the gap
+     between text lines. */
+  margin-top: calc(1.618 * 1.125rem);
 }
 pre code {
   padding: 0;
@@ -203,11 +318,37 @@ pre code {
 blockquote {
   /* border-radius: 8px; */
   background-color: #77777733;
+  /* sakura's 5px quote border, recolored from its hardcoded teal to the
+     theme link ink — same treatment as dl dd below. */
+  border-left: 5px solid var(--link-color);
   opacity: 0.9;
   /* font-style: italic; */
   /* padding: 1rem; */
   padding: 1rem 1.5rem;
   margin: 1rem 0;
+}
+blockquote p {
+  margin-bottom: 0;
+}
+
+hr {
+  /* Was awsm.css's rule; js/site-ornaments.js samples this stroke to
+     match the ornament ink to the page. */
+  border: 0;
+  height: 1px;
+  margin: 2em 0;
+  background: #77777777;
+}
+
+/* sakura's #f1f1f1 row rules are light-theme ink; wear the site hairline. */
+td,
+th {
+  border-bottom: 1px solid #77777777;
+}
+/* Cell images (Augmenting's figures) shouldn't carry the flow margin. */
+td img,
+th img {
+  margin-bottom: 0;
 }
 
 body a {
@@ -216,6 +357,7 @@ body a {
 
 body a:hover {
   color: var(--link-hover);
+  border-bottom: 0;
 }
 
 body a:visited {
@@ -236,7 +378,9 @@ body article header h2 a:visited {
   color: var(--link-visited);
 }
 
-/* Needs the body prefix to outrank awsm.css's article-header rules. */
+/* The body prefix once outranked awsm.css's article-header rules; sakura
+   has none, but the prefix is harmless and keeps the specificity story
+   unchanged. */
 body article header h1 a:visited:hover,
 body article header h2 a:visited:hover {
   color: var(--link-visited-hover);
@@ -309,7 +453,9 @@ body .sidebar {
   display: flex;
   flex-direction: column;
   font-style: normal;
-  /* left: 1rem; */
+  /* rides at the app canvas's left edge (0 below --app-max — the cap
+     only exists on very large screens) */
+  left: var(--app-edge);
   max-width: none;
   overflow: hidden;
   position: fixed;
@@ -346,7 +492,10 @@ body .sidebar {
   cursor: pointer;
   display: inline-flex;
   flex: none;
-  /* font: inherit; */
+  /* awsm reset the button font (family + 1em size); sakura leaves the UA
+     default (13.33px system font). Chrome font at the inherited size. */
+  font-family: "Roboto", sans-serif;
+  font-size: inherit;
   justify-content: center;
   margin: 0;
   padding: 0 1rem;
@@ -373,6 +522,9 @@ body .sidebar {
 .sidebar-actions button:hover,
 .sidebar .search .input-wrap button:hover,
 .sidebar-toggle:hover {
+  /* Restate the rest state: sakura's button:hover (pink) would otherwise
+     outrank the bare .sidebar-toggle rule. */
+  background: color-mix(in srgb, var(--body-color) 20%, var(--sidebar-background));
   /* opacity: 0.65; */
 }
 
@@ -406,6 +558,11 @@ body .sidebar {
   border: 0;
   color: inherit;
   flex: 1;
+  /* sakura's inputs carry a 4px radius, a 10px bottom margin and the
+     browser's font; square it up with the rest of the chrome. */
+  border-radius: 0;
+  font-family: inherit;
+  margin-bottom: 0;
   min-width: 0;
   padding-right: 2.5rem;
   padding-left: 1rem;
@@ -518,12 +675,21 @@ body .sidebar {
   padding-left: 0.75rem;
 }
 
+/* Section outline of a page not listed in _sidebar.md — js/docsify.js
+   moves it here (docsify would otherwise park it under the "#" fallback
+   match, Главная). Reads as its own block, not a nav group. */
+.sidebar .orphan-outline {
+  margin: 0.75rem 0 0.25rem;
+}
+
 /* Docsify's scroll-spy keeps a single .active li and moves it from the
    page link to a section link inside the page's outline on scroll.
    Keep the page pill lit while any of its sections is active, and show
-   which section is in view. */
-.sidebar .sidebar-nav > ul > li.active > a,
-.sidebar .sidebar-nav > ul > li:has(.app-sub-sidebar .active) > a {
+   which section is in view. The pill follows the link at ANY nesting
+   depth — the sidebar's groups put page links one ul down, and only
+   section links (a.section-link) are excluded. */
+.sidebar .sidebar-nav li.active > a:not(.section-link),
+.sidebar .sidebar-nav li:has(.app-sub-sidebar .active) > a:not(.section-link) {
   background: color-mix(in srgb, currentColor 15%, transparent);
   /* border-radius: 8px; */
   color: var(--link-color);
@@ -540,13 +706,16 @@ body .sidebar {
   color: #777777AA;
   flex: none;
   font-size: 0.7rem;
+  display: none;
   /* font-weight: bold; */
   /* margin-top: auto; */
   /* padding: 0 1rem 1rem; */
 }
 
 .sidebar > footer p {
-  /* margin: 0; */
+  /* sakura gives every p a bottom margin; awsm's last-child reset used to
+     cover this. */
+  margin: 0;
 }
 
 .sidebar-toggle {
@@ -564,8 +733,9 @@ body .sidebar {
 
   /* Console panel: stops above the bottom control row. */
   body .sidebar {
-    /* awsm.css gives every aside margin: 0.5em 0 — on a fixed panel that
-       would lift it off the top edge. */
+    /* awsm.css used to give every aside margin: 0.5em 0 — on a fixed
+       panel that would lift it off the top edge. sakura leaves asides
+       alone; the reset stays as a guard. */
     margin: 0;
     /* border-radius: 0 0 32px 32px; */
     bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
@@ -654,6 +824,24 @@ body .sidebar {
   }
 }
 
+/* Vertical counterpart of the app cap: on very large screens the whole
+   app floats away from the top edge too — the sidebar's ink (search,
+   nav) starts 4rem down, and the reading column gets real air above the
+   first line, matched below the last so the page ends on the same
+   rhythm. The ornament's lanes follow by themselves: everything it
+   measures is live. The height guard keeps wide-but-short windows on
+   today's tighter top. */
+@media (min-width: 2201px) and (min-height: 800px) {
+  body .sidebar {
+    top: 4rem;
+  }
+
+  body .markdown-section {
+    padding-top: 14rem;
+    padding-bottom: 14rem;
+  }
+}
+
 /* Definition lists and footnotes */
 
 dl dt {
@@ -704,6 +892,11 @@ dl dd + dt {
 ::-webkit-scrollbar-track {
   background-color: transparent;
   /* border-radius: 8px; */
+}
+
+/* Was awsm.css's rule. */
+::selection {
+  background: #ffffff33;
 }
 
 /* Reduced motion */

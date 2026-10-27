@@ -1,5 +1,24 @@
 const MOBILE_SIDEBAR_QUERY = "(max-width: 768px)";
 
+// Docsify renders nav hrefs without ".md" (router.toURL strips it) but keys
+// the scroll-spy by the raw current path — a hash that keeps ".md" (direct
+// links, search-plugin results) can never match, so section highlighting
+// dies. Strip it from the hash before docsify boots, and on every change
+// (replaceState fires no hashchange, so there is no loop).
+function normalizeHash() {
+  if (/\.md(?=[?#]|$)/.test(location.hash)) {
+    history.replaceState(
+      null,
+      "",
+      location.pathname +
+        location.search +
+        location.hash.replace(/\.md(?=[?#]|$)/, "")
+    );
+  }
+}
+normalizeHash();
+window.addEventListener("hashchange", normalizeHash);
+
 function setupSidebar() {
   const search = document.querySelector(".search");
   const sidebar = document.querySelector(".sidebar");
@@ -356,6 +375,33 @@ function wrapContentImages() {
   });
 }
 
+// Docsify appends the current page's section outline to whichever nav link
+// matched the route. Pages that are not listed in _sidebar.md match nothing
+// but the "#" prefix, so docsify parks the outline under the fallback match
+// (Главная), lights that li as if it were the current page, and a long
+// document's 50-item outline explodes the wrong nav group. Detect the
+// orphan, un-light the impostor, and give the outline its own block at the
+// end of the nav.
+function relocateOrphanOutline() {
+  const nav = document.querySelector(".sidebar-nav");
+  const sub = nav && nav.querySelector(".app-sub-sidebar");
+  if (!sub || !sub.closest("li")) return;
+  const hostLi = sub.closest("li");
+  const hostLink = hostLi.querySelector(":scope > a");
+  const strip = (href) =>
+    href.replace(/^#/, "").split("?")[0].replace(/\.md$/, "");
+  const path = strip(location.hash);
+  const host = hostLink ? strip(hostLink.getAttribute("href") || "") : "";
+  if (host === path) return; // the outline sits under its own page
+  hostLi.classList.remove("active");
+  const list = nav.querySelector(":scope > ul");
+  if (!list) return;
+  const li = document.createElement("li");
+  li.className = "orphan-outline";
+  li.appendChild(sub);
+  list.appendChild(li);
+}
+
 // Docsify (v4 and v5) builds the page outline in Compiler#subSidebar with
 // genTree(), whose parent lookup goes stale: when a shallower heading follows
 // deeper ones (## ... # ... ###), the deep headings keep nesting under the
@@ -427,8 +473,19 @@ function fixSubSidebarOutline(compiler) {
     if (!cachedTree || (!cachedTree.length && this.toc.length)) {
       const toc = this.toc;
       if (toc[0] && toc[0].ignoreAllSubs) toc.splice(0);
-      if (
+      // Drop the leading heading only when it really is the page title: the
+      // article must OPEN with it. The plain level test ate the first SECTION
+      // of documents that begin with prose (Augmenting) — they have no title
+      // to drop, yet every section is >= the first one's level.
+      const article = document.querySelector("article.markdown-section");
+      const first = article && article.firstElementChild;
+      const opensWithTitle =
+        first &&
+        /^H[1-6]$/.test(first.tagName) &&
         toc[0] &&
+        toc[0].slug.indexOf("id=" + first.id) !== -1;
+      if (
+        opensWithTitle &&
         toc.every(function (heading) {
           return heading.level >= toc[0].level;
         })
@@ -489,6 +546,7 @@ window.$docsify = {
     },
     function (hook) {
       hook.doneEach(wrapContentImages);
+      hook.doneEach(relocateOrphanOutline);
     },
   ],
   markdown: {

@@ -50,9 +50,10 @@
   function grid(width) {
     // Carve symmetric ornament voids out of the content area, fill the
     // rest with columns: count from the measure, then stretch. The
-    // article is centered by awsm's margin: 0 auto, so the free space
-    // from the container's left edge to the first column equals the
-    // free space from the last column to the right edge.
+    // article is centered by style.css's margin: 0 auto (body article),
+    // so the free space from the container's left edge to the first
+    // column equals the free space from the last column to the right
+    // edge.
     var voidSide = Math.max(
       VOID_MIN,
       Math.min(VOID_MAX, Math.round(width * VOID_SHARE))
@@ -311,7 +312,7 @@
     var cs = getComputedStyle(article);
     var padX =
       parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
-    // awsm.css caps body article at 40rem — lift the cap to measure the
+    // style.css caps body article at 40rem — lift the cap to measure the
     // width actually available, then set our own.
     article.style.maxWidth = "none";
     article.style.marginLeft = "";
@@ -453,8 +454,8 @@
     }
     // Shrink the article to the columns that actually exist: a short
     // article builds one narrow row, and the box must wrap it — then
-    // awsm's margin: 0 auto gives equal free space on both sides and
-    // the ornament hugs the ink instead of empty air.
+    // style.css's margin: 0 auto (body article) gives equal free space
+    // on both sides and the ornament hugs the ink instead of empty air.
     var blockW = 0;
     Array.prototype.forEach.call(
       article.querySelectorAll(":scope > .mrow"),
@@ -542,12 +543,15 @@
     // Fresh capture for this route (docsify replaced the children).
     // SVG tagName is lowercase in HTML documents — case-sensitive
     // comparison once let the ornament's frame in as a "block", which
-    // wasted columns and re-anchored the drawing mid-DOM.
+    // wasted columns and re-anchored the drawing mid-DOM. The breadcrumb
+    // trail (js/breadcrumbs.js) stays out too: it sits above the columns,
+    // never inside one.
     original = Array.prototype.filter.call(article.children, function (c) {
       return (
         c.nodeType === 1 &&
         c.tagName.toUpperCase() !== "SVG" &&
-        !c.classList.contains("mrow")
+        !c.classList.contains("mrow") &&
+        !c.classList.contains("breadcrumbs")
       );
     });
     active = false;

@@ -1,20 +1,26 @@
 /*
   Site ornament — the demo's CA frame, fitted to the real free space.
 
-  Layout facts (verified against awsm.css + docsify v4 DOM):
-  docsify renders <main><article class="markdown-section">. awsm gives
-  `body article` max-width 40rem + margin auto + position:relative — the
-  640px column, centered in a full-width main. Nothing overrides it.
-  So the free space is the void on BOTH sides of the article (between the
-  fixed sidebar card and the column; and from the column to the viewport
-  edge), the 5rem paddings above/below the text, and the gap before the
-  centered footer.
+  Layout facts (verified against sakura.css + style.css + docsify v4 DOM):
+  docsify renders <main><article class="markdown-section">. style.css
+  (the body article rule, carried over from awsm.css) gives it
+  max-width 40rem + margin auto + position:relative — the 640px column,
+  centered in a full-width main. Nothing overrides it. So the free space
+  is the void on BOTH sides of the article (between the fixed sidebar
+  card and the column; and from the column to the app canvas edge —
+  style.css caps and centers the whole shell at --app-max, and past the
+  cap is empty margin the ornament never enters), the 5rem paddings
+  above/below the text, and the gap before the centered footer.
 
   The frame is ONE generator call, exactly like the studio demo: a single
   field whose hole is the text block, whose box fills the measured void on
-  every side (no invented widths). Sides without room collapse onto the
-  text — bands emerge by themselves. The SVG lives inside the article
-  (awsm positions it relatively) and overflows into the voids.
+  every side, lane by lane — each capped (sideMax for the left/right
+  lanes, bandMax for the top/bottom ones: huge voids keep their air, the
+  ornament hugs the text) and gated by laneMin (a thinner void is all
+  moat, so the lane is not generated and the frame lands exactly on the
+  text block's edge — collapsed sides make the top/bottom lanes match the
+  column content width). The SVG lives inside the article (positioned
+  relatively by the same rule) and overflows into the voids.
 
   Static (nothing animates), lazy (drawn once when near the viewport).
   All tuning lives in SETTINGS below — same names as the studio sliders.
@@ -35,7 +41,7 @@
   var SETTINGS = {
     // -- how many lines survive --
     maxlinesPerArea: 99999, // twin-safe contour budget per 820×267 of frame area (winners 69–145; unlimited never won)
-    minlen: 0,    // drop contours shorter than this × cell px (winners' absolute gates 2–35px)
+    minlen: 2,    // drop contours shorter than this × cell px (winners' absolute gates 2–35px)
     // -- stroke --
     matchDivider: true, // take width + color from the page's <hr> (tracks theme and restyles)
     weight: 1, // stroke width in px when matchDivider is off (the site draws uniform ink — genCA's body/hair tiers are never read here)
@@ -44,13 +50,13 @@
     smooth: 2,        // curve samples per segment, 2–8 (studio: smooth)
     organic: 0,       // 0 geometric · 1 crisp · 2 soft · 3 organic (studio: style)
     sym: 'none',         // ring symmetry: 'v' left≡right · 'h' top≡bottom · 'both' · 'none' (one wrap seam)
-    readout: 'noise',   // how the plane reads the CA: null = roll per load · 'ray' radiates from the text · 'noise' smooth warp (distributes, but shears the texture) · 'shards' marquetry — pure CA inside each shard, offsets distribute
+    readout: 'kaleido',   // how the plane reads the CA: null = roll per load · 'ray' radiates from the text · 'noise' smooth warp (distributes, but shears the texture) · 'shards' marquetry — each shard reads pure CA through its own rotated frame · 'slab' one angled wallpaper · 'kaleido' mirror tiles, bookmatched at the folds · 'prism' many little centres, each radiating from its own square · 'zones' frames within frames, bands around the text · 'courses' banded frames, columns or strata · 'orbit' the automaton marches around the words
     // -- readout tuning, rolled per load (ray ignores all of these) --
     kSlope: [0.3, 0.75],  // noise: angular warp budget, ring px per plane px — how hard the courses meander
     gSlope: [0.06, 0.22], // noise: radial warp budget, generations per plane px — how hard the banding scrambles
-    shardN: [6, 16],      // shards: how many pieces the marquetry cuts
-    shardDk: [-30, 30],   // shards: per-shard ring offset span, cells — where on the ring each piece reads
-    shardDg: [-5, 9],     // shards: per-shard generation offset span — negative regrows young lace mid-frame
+    shardN: [6, 16],        // shards: how many pieces the marquetry cuts
+    shardDk: [-0.3, 0.3],   // shards: per-shard ring offset span, fraction of the ring — slides a piece along the row
+    shardDg: [-0.3, 0.3],   // shards: per-shard generation offset span, fraction of the span — slides a piece across generations
     seedProc: 'noise',   // seed-row procedure: null = roll per load · harm/fm/square/chirp/noise/walk/pulse to pin
     // -- borders: REAL gaps in px (one-cell moats — the ornament between them
     //    is untouched; replaces the old distanding standoff window) --
@@ -59,15 +65,26 @@
     opacity: 1,    // ink strength of the ornament, 0–1
     // -- random genome per load --
     dens: [0.4, 0.9],  // CA seed density (studio: density) — dead draws averaged 0.77
-    detail: [4, 16],   // grid cell in px, ABSOLUTE (winners 4.5–10, mean 7.1) — the frame-relative scaler is gone, it only pinned genCA's 10px clamp
+    detail: [8, 16],   // grid cell in px, ABSOLUTE (winners 4.5–10, mean 7.1) — the frame-relative scaler is gone, it only pinned genCA's 10px clamp
     rate: [5.3, 10.5],    // pattern phases per z unit (studio: gen rate) — winners averaged 0.92
     z: [20, 100],        // phase slice — winners averaged 54, extremes leaned dead
     // -- generation depth --
     depth: [36, 56],    // CA generations before the field folds back triangle-wave — deep voids re-wear young lace instead of degenerating
     // -- fit --
-    sideMin: 0,        // px of void a side needs before it gets a strip
+    laneMin: 80,       // px of void ANY lane needs before it is generated —
+                       // a thinner void is all moat (padInner 48 + padOuter
+                       // 12), so the lane collapses and the frame lands
+                       // flush on the text instead of drawing lint
+    sideMax: 260,      // cap on a side lane's width (left/right) — with
+                       // lots of free space the ornament hugs the column
+                       // and the void keeps its air (columns.js carves the
+                       // same ceiling, VOID_MAX)
+    bandMax: 240,      // cap on a horizontal lane's height (top/bottom) —
+                       // the ornament hugs the text; tall paddings and the
+                       // footer tail keep their air
     edgePad: 0,        // breathing room from the viewport edge
-    bottomMax: 240     // cap on the tail strip below the article
+    bottomMax: 240     // how far down the footer gap is hunted for the
+                       // bottom lane (the lane itself is capped by bandMax)
   };
 
   function roll() {
@@ -177,14 +194,22 @@
     // column (on mobile it is a hidden centered overlay, not a left card)
     var doc = document.documentElement;
     var leftLimit = SETTINGS.edgePad;
+    var canvasR = doc.clientWidth; // the app canvas's right edge. Past the
+    // --app-max cap (style.css) the page is empty centered margin — the
+    // ornament must not drift out there, so the right void ends at the
+    // canvas, exactly where the left void ends at the sidebar card
     var sidebar = document.querySelector(".sidebar");
     if (sidebar) {
       var sr = sidebar.getBoundingClientRect();
-      if (sr.width > 0 && sr.right > 0 && sr.right < ar.left)
+      if (sr.width > 0 && sr.right > 0 && sr.right < ar.left) {
         leftLimit = sr.right + SETTINGS.edgePad;
+        // the canvas is centered, so its right edge mirrors the sidebar's
+        // left edge — no copy of the CSS cap lives here
+        canvasR = doc.clientWidth - Math.max(0, sr.left);
+      }
     }
     var leftRoom = ar.left - leftLimit;
-    var rightRoom = doc.clientWidth - SETTINGS.edgePad - ar.right;
+    var rightRoom = canvasR - SETTINGS.edgePad - ar.right;
 
     // below: the gap between the article and the centered footer
     var bottomRoom = 0;
@@ -195,12 +220,34 @@
       if (gap > 0) bottomRoom = Math.min(gap, SETTINGS.bottomMax);
     }
 
-    // the frame box: fill every side's measured void; sides without room
-    // collapse onto the text block (bands behaviour emerges by itself)
-    var boxX0 = leftRoom >= SETTINGS.sideMin ? -leftRoom : text.x0 - 2;
-    var boxX1 = rightRoom >= SETTINGS.sideMin ? ar.width + rightRoom : text.x1 + 2;
-    var boxY0 = 0;
-    var boxY1 = art.scrollHeight + (bottomRoom >= SETTINGS.sideMin ? bottomRoom : 0);
+    // lanes: the measured void each side of the text turns into ornament —
+    // capped (sideMax left/right, bandMax top/bottom) so huge voids keep
+    // their air and the ornament hugs the text, and gated by laneMin: a
+    // thinner void is all moat (padInner + padOuter eat it), so that lane
+    // is not generated at all — the box lands exactly on the text block's
+    // edge and the ink runs flush (a collapsed side makes the top/bottom
+    // lanes match the column content width exactly — structural, not pad
+    // arithmetic doing an impression of the padding).
+    var lane = function (room, max) {
+      return room >= SETTINGS.laneMin ? Math.min(room, max) : 0;
+    };
+    var laneL = lane(leftRoom, SETTINGS.sideMax);
+    var laneR = lane(rightRoom, SETTINGS.sideMax);
+    // horizontal lanes: the article's own paddings, plus the footer gap
+    // hunted into the bottom one (up to bottomMax)
+    var laneT = lane(text.y0, SETTINGS.bandMax);
+    var laneB = lane(art.scrollHeight - text.y1 + bottomRoom, SETTINGS.bandMax);
+    var boxX0 = laneL ? -laneL : text.x0;
+    var boxX1 = laneR ? ar.width + laneR : text.x1;
+    var boxY0 = text.y0 - laneT;
+    var boxY1 = text.y1 + laneB;
+    // only a generated lane keeps its outer moat; a collapsed one pads 0
+    var padOuter = {
+      l: laneL ? SETTINGS.padOuter.l : 0,
+      r: laneR ? SETTINGS.padOuter.r : 0,
+      t: laneT ? SETTINGS.padOuter.t : 0,
+      b: laneB ? SETTINGS.padOuter.b : 0,
+    };
     var W = Math.round(boxX1 - boxX0);
     var H = Math.round(boxY1 - boxY0);
     // never let the frame cross the viewport's right edge: the frame's
@@ -299,8 +346,11 @@
     function draw() {
       var res = null;
       // ~1 draw in 10 rests (≤2 contours: rule lottery × high dens) — the
-      // survey's dead draws. Re-roll the genome rather than ship a dead frame.
-      for (var attempt = 0; attempt < 3 && (!res || (res.paths || []).length <= 2); attempt++) {
+      // survey's dead draws. Frame readouts (shards/slab/kaleido/prism)
+      // also rest when their ring window lands on a dead stretch, so the
+      // gate is < 24 contours at any area: a full page under 24 reads
+      // empty. Re-roll the genome rather than ship a dead frame.
+      for (var attempt = 0; attempt < 3 && (!res || (res.paths || []).length < 24); attempt++) {
         try {
           res = Ornament.make("ca", W, H, P.seed, {
             variant: "frame",
@@ -324,13 +374,13 @@
             smooth: SETTINGS.smooth,
             organic: SETTINGS.organic,
             padInner: SETTINGS.padInner,
-            padOuter: SETTINGS.padOuter,
+            padOuter: padOuter,
           });
         } catch (e) {
           console.error("ornament failed", e);
           return;
         }
-        if ((res.paths || []).length <= 2) {
+        if ((res.paths || []).length < 24) {
           P.seed = (Math.random() * 4294967296) >>> 0;
           P.dens = P.dens * 0.75;
         }

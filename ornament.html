@@ -132,6 +132,12 @@
       <option value="ray">ray · radiate from the text</option>
       <option value="noise">noise · distributed meander</option>
       <option value="shards">shards · marquetry of pure CA</option>
+      <option value="slab">slab · one angled wallpaper</option>
+      <option value="kaleido">kaleido · mirror tiles</option>
+      <option value="prism">prism · many little centres</option>
+      <option value="zones">zones · frames within frames</option>
+      <option value="courses">courses · banded frames</option>
+      <option value="orbit">orbit · marches around the words</option>
     </select>
   </div>
   <div class="hint">any elementary rule 0–255, hashed from the seed when blank</div>
@@ -599,25 +605,74 @@ function genCA(w, h, seed, o){
   //       organise everything (a softer square-swirl rail). Which is
   //       what shards exists to avoid.
   // shards a marquetry of 6–16 Voronoi shards; each shard reads the
-  //       SAME ray geometry shifted by CONSTANTS (dk ring cells, dg
-  //       generations). Inside a shard the mapping is exactly ray's —
-  //       the automaton is never sheared, skipped or stretched; its
-  //       texture stays as crisp as ray mode. Distribution comes from
-  //       the per-shard offsets (young lace appears mid-frame, old
-  //       near the words); the only imposed geometry is the shard
-  //       EDGES — hard splices (softened by one blur pass at
-  //       organic ≥ 1), seed-rolled every genome, nothing to ride.
-  //       Symmetry: sites live on the folded plane, dk flips sign
-  //       across each fold axis, dg is even — mirror pairs read
-  //       mirrored cells, as with noise.
-  const READOUTS = ['ray', 'noise', 'shards'];
+  //       cylinder through its OWN rotated frame (angle + constant
+  //       offsets dk/dg, in FRACTIONS of the ring / of the drawable
+  //       span — scale-free, unlike the original absolute cells, which
+  //       only fit the studio stage). The frame is the point: every
+  //       readout that keeps ring position tied to the RAY from the
+  //       text — ray, noise, and shards shifted by constants — shares
+  //       one skeleton; the automaton's long-lived verticals ARE rays
+  //       and its generations ARE rings, so on a page-sized ring the
+  //       whole picture reads as one burst from the text, offsets or
+  //       no. A local frame keeps the read pure — unit rate in both
+  //       axes, no shear, no skipped or doubled generations, texture
+  //       exactly as crisp as ray mode — while the stripes point where
+  //       the shard points: nothing radiates any more. The only imposed
+  //       geometry is the shard EDGES — hard splices (softened by one
+  //       blur pass at organic ≥ 1), seed-rolled every genome, nothing
+  //       to ride. Symmetry: sites live on the folded plane and frames
+  //       are evaluated in folded coordinates, so mirror pairs fold to
+  //       the same site and the same reads — the marquetry mirrors.
+  // slab   ONE rigid frame for the whole void — the cylinder unrolled
+  //        as straight wallpaper at a genome angle. The austerity
+  //        option: no partition, no centre, pure automaton at a slant.
+  // kaleido mirror tiles: the plane triangle-folds against a genome
+  //        tile in both axes, every tile reading the same patch of
+  //        cylinder, bookmatched at the folds. Folds are isometries —
+  //        the read stays pure — and the palindromic row makes the
+  //        k-folds seamless in value, so the mirrors show as ink, not
+  //        seams. Generations run up and down from each fold line:
+  //        the young lace lives ON the seams, like growth from a
+  //        bookmatch spine.
+  // prism  many centres: Voronoi sites, each cell reading RAY geometry
+  //        around its own small square. The radiating character of
+  //        ray, distributed — every piece grows from its own little
+  //        text, kinks only at the cell edges, as with shards.
+  // zones  frames within frames: concentric rectangular bands around
+  //        the text (Chebyshev distance from the hole), each band pure
+  //        CA in its own rotated frame. The partition echoes the text
+  //        block — border, field, border — while no texture radiates:
+  //        the bands are cut, not grown.
+  // courses banded frames: straight parallel bands — columns or strata
+  //        by a genome roll — each band pure CA at its own angle (free
+  //        rolls, or a chevron alternating ±A), windows stepped around
+  //        the ring by the golden cut.
+  // orbit  ray with the axes swapped: ring position grows with
+  //        DISTANCE from the words, generation marches AROUND them.
+  //        Pure — the ray readout's own geometry, exchanged — but the
+  //        light cones now spiral about the text, and if every genome
+  //        reads as the same swirl that is the old rail in new clothes:
+  //        rate it honestly and delete it if it rides.
+  const READOUTS = ['ray', 'noise', 'shards', 'slab', 'kaleido', 'prism', 'zones', 'courses', 'orbit'];
   const readout = READOUTS.includes(o.readout) ? o.readout : pick(r, READOUTS);
   // the two warp fields, evaluated ONTO THE GRID up front (null = ray):
   // the field loop below reads them by node index. Noise fields are
-  // separable (see mkField.grid); shards are cheap per node and are
-  // sampled directly. Both produce exactly the values the per-node
-  // closures they replace produced.
-  let KOFF = null, GV = null;
+  // separable (see mkField.grid). The frame readouts — shards, slab,
+  // kaleido, prism — bypass the ray readout: their scans store the
+  // cylinder reads themselves (KK/GG, null = ray/noise) and the field
+  // loop takes the cell straight from them.
+  // gfold: depth-fold a generation index — triangle over [0, depth),
+  // wrapping negatives (local frames run both ways), never clamping (a
+  // clamp would paint flat dead gen-0 patches); no depth mirrors at 0
+  const gfold = gr => {
+    if (foldInf) gr = Math.abs(gr);
+    else { gr %= depth2; if (gr < 0) gr += depth2; if (gr >= depth) gr = depth2 - gr; }
+    return Math.min(gr, gNeed - 1);
+  };
+  let KOFF = null, GV = null, KK = null, GG = null;
+  // orbit rides the ray path in the field loop, swapping the axes at
+  // the last moment (see the readout notes)
+  let ORBIT = false, oDk = 0, oDg = 0, oStep = 0;
   if (readout === 'noise'){
     // mkField precomputes each octave's value-noise LATTICE once (ihash
     // per lattice corner, corners shared by every node in a cell) and the
@@ -778,28 +833,38 @@ function genCA(w, h, seed, o){
     const fw = sym === 'v' || sym === 'both' ? midX : w;
     const fh = sym === 'h' || sym === 'both' ? midY : h;
     const nS = o.shardN != null ? Math.max(1, Math.round(+o.shardN)) : irange(r, 6, 16);
-    // per-shard offset spans are [lo, hi] genome knobs (one roll per
-    // shard, so the site passes the RANGE, not a value); null = defaults
-    const dkR = Array.isArray(o.shardDk) ? o.shardDk : [-30, 30];   // ring cells
-    const dgR = Array.isArray(o.shardDg) ? o.shardDg : [-5, 9];     // generations
+    // offset spans are [lo, hi] genome knobs (one roll per shard, so the
+    // site passes the RANGE, not a value), in FRACTIONS — dk of the ring,
+    // dg of the drawable span — so the marquetry keeps its strength at
+    // any frame size (the original absolute cells only fit the studio
+    // stage: on a page-sized ring ±30 cells is a few percent)
+    const dkR = Array.isArray(o.shardDk) ? o.shardDk : [-0.3, 0.3];   // ring fraction
+    const dgR = Array.isArray(o.shardDg) ? o.shardDg : [-0.3, 0.3];   // span fraction
+    // Each shard reads the cylinder through its OWN rotated frame (see
+    // the readout notes above for why constants alone cannot de-centre
+    // the field). The frame is a rigid isometry of the plane: unit rate
+    // in both axes, so the automaton is never sheared, skipped or
+    // stretched — its texture stays exactly as crisp as ray mode —
+    // while the stripes point where the shard points.
     const sites = [];
-    for (let i = 0; i < nS; i++) sites.push({
-      x: rrange(r, 0, fw), y: rrange(r, 0, fh),
-      dk: Math.round(rrange(r, dkR[0], dkR[1])),
-      dg: Math.round(rrange(r, dgR[0], dgR[1])),
-    });
-    const sX = x => (sym === 'v' || sym === 'both') && x >= midX ? -1 : 1;
-    const sY = y => (sym === 'h' || sym === 'both') && y >= midY ? -1 : 1;
-    // one fused scan per node (kOff and gOff consult the SAME shard, so
-    // the original's two closures each re-ran the site search); the
-    // folded-plane coordinates are pure per-column/per-row functions
-    KOFF = new Float64Array(nx * ny);
-    GV = new Float64Array(nx * ny);
+    for (let i = 0; i < nS; i++){
+      const th = rrange(r, 0, TAU);
+      sites.push({
+        x: rrange(r, 0, fw), y: rrange(r, 0, fh),
+        ct: Math.cos(th), st: Math.sin(th),
+        dk: Math.round(rrange(r, dkR[0], dkR[1]) * ringN),
+        dg: Math.round(rrange(r, dgR[0], dgR[1]) * gNeed),
+      });
+    }
+    // one fused scan per node: shard search and frame read in one pass,
+    // in FOLDED coordinates — mirror pairs fold to the same site and
+    // the same local (u, v), so partition and frames mirror together
+    KK = new Int32Array(nx * ny);
+    GG = new Int32Array(nx * ny);
     const foldX = fw < w, foldY = fh < h;
     for (let j = 0; j < ny; j++){
       const y = YS[j];
       const qy = foldY ? midY - Math.abs(y - midY) : y;
-      const sy2 = sY(y);
       for (let i = 0; i < nx; i++){
         const x = XS[i];
         const qx = foldX ? midX - Math.abs(x - midX) : x;
@@ -810,10 +875,203 @@ function genCA(w, h, seed, o){
           if (d < bd){ bd = d; best = s; }
         }
         const oj = j * nx + i;
-        KOFF[oj] = best.dk * cell * sX(x) * sy2;
-        GV[oj] = best.dg;
+        const dx = qx - best.x, dy = qy - best.y;
+        let kk = Math.round((dx * best.ct + dy * best.st) / cell) + best.dk;
+        KK[oj] = ((kk % ringN) + ringN) % ringN;
+        GG[oj] = gfold(Math.round((-dx * best.st + dy * best.ct) / cell) + best.dg);
       }
     }
+  } else if (readout === 'slab'){
+    // ONE rigid frame for the whole void: the cylinder unrolled as
+    // straight wallpaper at a genome angle (see the readout notes).
+    // Folded coordinates keep mirror pairs on identical cells — the
+    // slab mirrors exactly under every sym
+    const th = rrange(r, 0, TAU), ct = Math.cos(th), st = Math.sin(th);
+    const dk = Math.round(rrange(r, -0.3, 0.3) * ringN);
+    const dg = Math.round(rrange(r, -0.3, 0.3) * gNeed);
+    // window discipline: a page-sized ring is ~4× any slab's traversal,
+    // and one contiguous slice can sit on a dead stretch of the row —
+    // so the traversal is cut into windows that step around the ring by
+    // the golden cut: the slab reads SEVERAL spread windows, not one
+    // slice (the studio stage spans the whole ring and keeps nW = 1,
+    // no windows, exactly the single-frame look)
+    const spanC = Math.ceil((w * Math.abs(ct) + h * Math.abs(st)) / cell) + 1;
+    const nW = Math.max(1, Math.min(4, Math.round(ringN / spanC)));
+    const P = Math.max(24, Math.min(ringN, Math.ceil(spanC / nW) + 1));
+    const stepC = Math.round(ringN * 0.6180339887);
+    const mxv = sym === 'v' || sym === 'both', myv = sym === 'h' || sym === 'both';
+    KK = new Int32Array(nx * ny);
+    GG = new Int32Array(nx * ny);
+    for (let j = 0; j < ny; j++){
+      const y = YS[j], qy = myv ? midY - Math.abs(y - midY) : y;
+      for (let i = 0; i < nx; i++){
+        const x = mxv ? midX - Math.abs(XS[i] - midX) : XS[i];
+        const oj = j * nx + i;
+        const uu = x * ct + qy * st;
+        let kk = Math.round(uu / cell) + Math.floor(uu / (P * cell)) * stepC + dk;
+        KK[oj] = ((kk % ringN) + ringN) % ringN;
+        GG[oj] = gfold(Math.round((-x * st + qy * ct) / cell) + dg);
+      }
+    }
+  } else if (readout === 'kaleido'){
+    // mirror tiles: triangle-fold the plane against a genome tile in
+    // both axes; every tile reads the same patch of cylinder through
+    // the same constant offsets, bookmatched at the fold lines (see
+    // the readout notes). Folds are isometries — the read stays pure
+    const tw = rrange(r, 180, 420), thh = rrange(r, 180, 420);   // tile px, both axes
+    const dk = Math.round(rrange(r, -0.3, 0.3) * ringN);
+    const dg = Math.round(rrange(r, -0.3, 0.3) * gNeed);
+    // a tile reads its own tw-wide window of the row; tile COLUMNS step
+    // around the ring by the golden cut (wrap at ringN, NEVER at the
+    // window span — a window-span wrap pins every column to the same
+    // slice, and one quiet slice empties the whole readout)
+    const stepC = Math.round(ringN * 0.6180339887);
+    const trif = (z, p) => { z = ((z % (2 * p)) + 2 * p) % (2 * p); return z < p ? z : 2 * p - z; };
+    const mxv = sym === 'v' || sym === 'both', myv = sym === 'h' || sym === 'both';
+    KK = new Int32Array(nx * ny);
+    GG = new Int32Array(nx * ny);
+    for (let j = 0; j < ny; j++){
+      const y = YS[j], qy = myv ? midY - Math.abs(y - midY) : y;
+      for (let i = 0; i < nx; i++){
+        const x = mxv ? midX - Math.abs(XS[i] - midX) : XS[i];
+        const oj = j * nx + i;
+        const col = Math.floor(x / tw);
+        let kk = Math.round(trif(x, tw) / cell) + dk + col * stepC;
+        KK[oj] = ((kk % ringN) + ringN) % ringN;
+        GG[oj] = gfold(Math.round(trif(qy, thh) / cell) + dg);
+      }
+    }
+  } else if (readout === 'prism'){
+    // many centres: Voronoi sites, each cell reading ray geometry
+    // around its own small square (see the readout notes). The per-cell
+    // math is the ray readout's own — foot on the square by ray, arc
+    // around it, Chebyshev generation — so each piece is as pure as
+    // ray; kinks live only at the cell edges, as with shards
+    const fw = sym === 'v' || sym === 'both' ? midX : w;
+    const fh = sym === 'h' || sym === 'both' ? midY : h;
+    const nS = o.shardN != null ? Math.max(1, Math.round(+o.shardN)) : irange(r, 6, 16);
+    const dkR = Array.isArray(o.shardDk) ? o.shardDk : [-0.3, 0.3];
+    const dgR = Array.isArray(o.shardDg) ? o.shardDg : [-0.3, 0.3];
+    const sites = [];
+    for (let i = 0; i < nS; i++) sites.push({
+      x: rrange(r, 0, fw), y: rrange(r, 0, fh),
+      // the square's perimeter is its ring window — wide enough to
+      // hold the row's alive/dead mixture (tiny squares read all-alive
+      // stretches flat and the cell draws blank on dense genomes)
+      hw: rrange(r, 6, 16) * cell, hh: rrange(r, 6, 16) * cell,
+      dk: Math.round(rrange(r, dkR[0], dkR[1]) * ringN),
+      dg: Math.round(rrange(r, dgR[0], dgR[1]) * gNeed),
+    });
+    // one loop around a square spans 4·(hw+hh) of ring — that IS the
+    // site's window, and dk places it on the row (wrap at ringN, never
+    // at the window span: a window-span wrap pins every site to the
+    // same slice, and one quiet slice empties the whole readout)
+    KK = new Int32Array(nx * ny);
+    GG = new Int32Array(nx * ny);
+    const foldX = fw < w, foldY = fh < h;
+    for (let j = 0; j < ny; j++){
+      const y = YS[j];
+      const qy = foldY ? midY - Math.abs(y - midY) : y;
+      for (let i = 0; i < nx; i++){
+        const x = XS[i];
+        const qx = foldX ? midX - Math.abs(x - midX) : x;
+        let best = sites[0], bd = Infinity;
+        for (let q = 0; q < sites.length; q++){
+          const s = sites[q];
+          const d = (s.x - qx) * (s.x - qx) + (s.y - qy) * (s.y - qy);
+          if (d < bd){ bd = d; best = s; }
+        }
+        const oj = j * nx + i;
+        const dx = qx - best.x, dy = qy - best.y;
+        const ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;
+        const tx = best.hw / (ax || 1e-9), ty = best.hh / (ay || 1e-9);
+        const t = tx < ty ? tx : ty;
+        let arc;
+        if (ty <= tx)                                   // exits through top/bottom of the square
+          arc = dy <= 0 ? t * dx : 2 * (best.hw + best.hh) - t * dx;
+        else
+          arc = dx > 0 ? best.hw + best.hh + t * dy : -(best.hw + best.hh + t * dy);
+        let kk = Math.round(arc / cell) + best.dk;
+        KK[oj] = ((kk % ringN) + ringN) % ringN;
+        GG[oj] = gfold(Math.round(Math.max(ax - best.hw, ay - best.hh, 0) / cell) + best.dg);
+      }
+    }
+  } else if (readout === 'zones'){
+    // frames within frames: concentric rectangular bands around the
+    // text (Chebyshev distance from the hole), each band pure CA in
+    // its own rotated frame (see the readout notes). The distance is
+    // the ray readout's own — computed inline, mirror-symmetric per
+    // column/row exactly like DXX/DYY below
+    const nZ = irange(r, 2, 5);
+    const edges = [];
+    for (let e = rrange(r, 60, 200), i = 1; i < nZ; i++){ edges.push(e); e += rrange(r, 80, 260); }
+    const dkR = Array.isArray(o.shardDk) ? o.shardDk : [-0.3, 0.3];
+    const dgR = Array.isArray(o.shardDg) ? o.shardDg : [-0.3, 0.3];
+    const zs = [];
+    for (let i = 0; i < nZ; i++){
+      const th = rrange(r, 0, TAU);
+      zs.push({ ct: Math.cos(th), st: Math.sin(th),
+        dk: Math.round(rrange(r, dkR[0], dkR[1]) * ringN),
+        dg: Math.round(rrange(r, dgR[0], dgR[1]) * gNeed) });
+    }
+    const mxv = sym === 'v' || sym === 'both', myv = sym === 'h' || sym === 'both';
+    KK = new Int32Array(nx * ny);
+    GG = new Int32Array(nx * ny);
+    for (let j = 0; j < ny; j++){
+      const y = YS[j], qy = myv ? midY - Math.abs(y - midY) : y;
+      for (let i = 0; i < nx; i++){
+        const x = mxv ? midX - Math.abs(XS[i] - midX) : XS[i];
+        const oj = j * nx + i;
+        const xr = XS[i], yr = YS[j];
+        const dI = Math.max(inner.x0 - xr, 0, xr - inner.x1, inner.y0 - yr, 0, yr - inner.y1);
+        let b = 0; while (b < edges.length && dI > edges[b]) b++;
+        const s = zs[b];
+        let kk = Math.round((x * s.ct + qy * s.st) / cell) + s.dk;
+        KK[oj] = ((kk % ringN) + ringN) % ringN;
+        GG[oj] = gfold(Math.round((-x * s.st + qy * s.ct) / cell) + s.dg);
+      }
+    }
+  } else if (readout === 'courses'){
+    // banded frames: straight parallel bands, columns or strata by a
+    // genome roll; per-band angle free or a chevron alternating ±A,
+    // per-band window stepped around the ring by the golden cut (see
+    // the readout notes). Band index is a pure per-column/per-row
+    // function, so the per-band rolls are hashed, not stored
+    const vert = r() < 0.5;                       // columns vs strata
+    const bw = rrange(r, 120, 380);               // band width px
+    const chev = r() < 0.5, A = rrange(r, 0.26, 1.31);   // 15°–75°
+    const wS = (r() * 1e9) | 0;
+    const dk0 = Math.round(rrange(r, -0.3, 0.3) * ringN);
+    const dg0 = Math.round(rrange(r, -0.3, 0.3) * gNeed);
+    const stepC = Math.round(ringN * 0.6180339887);
+    const nB = Math.ceil((vert ? w : h) / bw) + 2;
+    const BC = new Float64Array(nB), BS = new Float64Array(nB), BD = new Int32Array(nB);
+    for (let b = 0; b < nB; b++){
+      const th = chev ? (b & 1 ? -A : A) : ihash(wS + b * 7919, 3) * TAU;
+      BC[b] = Math.cos(th); BS[b] = Math.sin(th);
+      BD[b] = Math.round((ihash(wS + b * 104729, 5) * 2 - 1) * 0.3 * gNeed);
+    }
+    const mxv = sym === 'v' || sym === 'both', myv = sym === 'h' || sym === 'both';
+    KK = new Int32Array(nx * ny);
+    GG = new Int32Array(nx * ny);
+    for (let j = 0; j < ny; j++){
+      const y = YS[j], qy = myv ? midY - Math.abs(y - midY) : y;
+      for (let i = 0; i < nx; i++){
+        const x = mxv ? midX - Math.abs(XS[i] - midX) : XS[i];
+        const oj = j * nx + i;
+        const b = Math.max(0, Math.min(nB - 1, Math.floor((vert ? x : qy) / bw)));
+        let kk = Math.round((x * BC[b] + qy * BS[b]) / cell) + dk0 + b * stepC;
+        KK[oj] = ((kk % ringN) + ringN) % ringN;
+        GG[oj] = gfold(Math.round((-x * BS[b] + qy * BC[b]) / cell) + dg0 + BD[b]);
+      }
+    }
+  } else if (readout === 'orbit'){
+    // ray, axes swapped — computed in the field loop, which owns the
+    // ray geometry; this branch only rolls the offsets (see notes)
+    ORBIT = true;
+    oDk = Math.round(rrange(r, -0.3, 0.3) * ringN);
+    oDg = Math.round(rrange(r, -0.3, 0.3) * gNeed);
+    oStep = Math.round(ringN * 0.6180339887);
   }
   // Ring position = where the RAY from the text centre through (x, y)
   // leaves the text rectangle. Constant-position curves are straight rays,
@@ -877,51 +1135,68 @@ function genCA(w, h, seed, o){
     const sy = FSY[j], ty = FTY[j], dy = DYY[j];
     const gvRow = GV ? j * nx : 0, rowBase = j * nx, y = YS[j];
     for (let i = 0; i < nx; i++){
-      // footArc(XS[i], YS[j]) — ray's foot on the text rect
-      const sx = FSX[i], tx = FTX[i];
-      const t = Math.min(tx, ty);
-      const fx = midX + t * sx, fy = midY + t * sy;
-      let arc;
-      if (ty <= tx)                                 // leaves through top/bottom edge
-        arc = sy <= 0 ? fx - midX : hh2 - (fx - midX);
-      else
-        arc = sx > 0 ? hw + (fy - cy0) : -(hw + (fy - cy0));
-      if (KOFF) arc += KOFF[gvRow + i];
-      // foldAt: wrap into the ring period, mirror into the span. The
-      // bare-mod fast paths are exact: for X in [per, 2·per) fmod(X, per)
-      // is X−per (Sterbenz-exact subtract), for X in (−per, 0) fmod
-      // returns X itself and the code adds per once — the identical add.
-      // Only genuinely out-of-range excursions (the warp's) pay the mod.
-      let m = symH ? arc - cArc : arc;
-      if (m < 0){
-        if (m > -perArc) m += perArc;
-        else { m %= perArc; if (m < 0) m += perArc; }
-      } else if (m >= perArc){
-        if (m < 2 * perArc) m -= perArc;
-        else m %= perArc;
-      }
-      const foldV = m < spanArc ? m : 2 * spanArc - m;   // mirror fold ('none' = plain arc)
-      // wrap, not clamp: the row is a palindrome (row[i] = row[n−1−i]),
-      // so cell 0 ≡ cell ringN−1 and the mod never changes a value the
-      // old clamp read — it just survives the warp's excursions. The
-      // round() result is a small integer: int32 arithmetic is exact
-      // where the double fmods were exact, so the wrap is bit-identical.
-      let kk = Math.round(foldV / cell) | 0;
-      kk = ((kk % ringN) + ringN) % ringN;
-      const dg = Math.max(DXX[i], dy) / cell;
-      // radial warp clamps at 0: the innermost lace stays youngest at
-      // the hole (the ornament still grows from the words, just unevenly).
-      // Math.round yields a small integer, so the depth fold runs in
-      // int32 — identical to fold() on integral doubles (fmod of two
-      // integers is the integer remainder).
-      const genRaw = (GV ? Math.max(0, Math.round(dg + GV[gvRow + i])) : Math.round(dg)) | 0;
-      let gen;
-      if (foldInf) gen = genRaw;
-      else {
-        const m2 = genRaw % depth2;
-        gen = m2 < depth ? m2 : depth2 - m2;
-      }
       const n = rowBase + i;
+      let kk, gen;
+      if (KK){
+        // shards: the frame scan above already read the cylinder — no
+        // ray foot, no distance, nothing that radiates enters here
+        kk = KK[n]; gen = GG[n];
+      } else {
+        // footArc(XS[i], YS[j]) — ray's foot on the text rect
+        const sx = FSX[i], tx = FTX[i];
+        const t = Math.min(tx, ty);
+        const fx = midX + t * sx, fy = midY + t * sy;
+        let arc;
+        if (ty <= tx)                                 // leaves through top/bottom edge
+          arc = sy <= 0 ? fx - midX : hh2 - (fx - midX);
+        else
+          arc = sx > 0 ? hw + (fy - cy0) : -(hw + (fy - cy0));
+        if (KOFF) arc += KOFF[gvRow + i];
+        // foldAt: wrap into the ring period, mirror into the span. The
+        // bare-mod fast paths are exact: for X in [per, 2·per) fmod(X, per)
+        // is X−per (Sterbenz-exact subtract), for X in (−per, 0) fmod
+        // returns X itself and the code adds per once — the identical add.
+        // Only genuinely out-of-range excursions (the warp's) pay the mod.
+        let m = symH ? arc - cArc : arc;
+        if (m < 0){
+          if (m > -perArc) m += perArc;
+          else { m %= perArc; if (m < 0) m += perArc; }
+        } else if (m >= perArc){
+          if (m < 2 * perArc) m -= perArc;
+          else m %= perArc;
+        }
+        const foldV = m < spanArc ? m : 2 * spanArc - m;   // mirror fold ('none' = plain arc)
+        // wrap, not clamp: the row is a palindrome (row[i] = row[n−1−i]),
+        // so cell 0 ≡ cell ringN−1 and the mod never changes a value the
+        // old clamp read — it just survives the warp's excursions. The
+        // round() result is a small integer: int32 arithmetic is exact
+        // where the double fmods were exact, so the wrap is bit-identical.
+        kk = Math.round(foldV / cell) | 0;
+        kk = ((kk % ringN) + ringN) % ringN;
+        const dg = Math.max(DXX[i], dy) / cell;
+        // radial warp clamps at 0: the innermost lace stays youngest at
+        // the hole (the ornament still grows from the words, just unevenly).
+        // Math.round yields a small integer, so the depth fold runs in
+        // int32 — identical to fold() on integral doubles (fmod of two
+        // integers is the integer remainder).
+        const genRaw = (GV ? Math.max(0, Math.round(dg + GV[gvRow + i])) : Math.round(dg)) | 0;
+        if (foldInf) gen = genRaw;
+        else {
+          const m2 = genRaw % depth2;
+          gen = m2 < depth ? m2 : depth2 - m2;
+        }
+        if (ORBIT){
+          // swap the axes: ring position grows with distance from the
+          // words, the generation marches around them. The arc enters
+          // through foldV (the palindrome fold) — the bare arc is ODD
+          // under mirrors and would break sym; and the ring window is
+          // only as wide as the distance range, so each foldV sector
+          // steps it around the row by the golden cut or a dense row
+          // reads one all-alive stretch flat
+          kk = ((Math.round(dg / cell) + oDk + Math.floor(foldV / (cell * 24)) * oStep) % ringN + ringN) % ringN;
+          gen = gfold(Math.round(foldV / cell) + oDg);
+        }
+      }
       const val = GEN[Math.min(gen, gNeed - 1) * ringN + kk] - 0.5;
       V[n] = val;
       // window: force the field below the isolevel near every boundary, so
@@ -1758,7 +2033,7 @@ const SURVEY_RANGES = {
 function rollSurvey(){
   const rr = (a, b) => +(a + Math.random() * (b - a)).toFixed(3);
   return {
-    readout: ['ray', 'noise', 'shards'][Math.floor(Math.random() * 3)],
+    readout: ['ray', 'noise', 'shards', 'slab', 'kaleido', 'prism', 'zones', 'courses', 'orbit'][Math.floor(Math.random() * 9)],
     dens: rr(...SURVEY_RANGES.dens),
     rate: rr(...SURVEY_RANGES.rate),
     standoff: rr(...SURVEY_RANGES.standoff),
