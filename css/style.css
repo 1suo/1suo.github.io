@@ -514,11 +514,6 @@ body .sidebar {
   width: 2em;
 }
 
-.sidebar-actions button,
-.sidebar .search .input-wrap button {
-  font-size: 1.25rem;
-}
-
 .sidebar-actions button:hover,
 .sidebar .search .input-wrap button:hover,
 .sidebar-toggle:hover {
