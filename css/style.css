@@ -20,7 +20,7 @@ html {
 body {
   background: transparent;
   color: inherit;
-  font-family:  serif;
+  font-family:  system-ui;
   /* font-family: "Roboto Serif", serif; */
   height: 100vh;
   margin: 0;
@@ -442,7 +442,7 @@ button.hashtag {
 body .sidebar,
 .sidebar-actions,
 .sidebar-toggle {
-  font-family:  sans-serif;
+  font-family:  system-ui;
   /* font-family: "Roboto", sans-serif; */
 }
 
