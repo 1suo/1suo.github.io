@@ -20,8 +20,7 @@ html {
 body {
   background: transparent;
   color: inherit;
-  font-family:  system-ui;
-  /* font-family: "Roboto Serif", serif; */
+  font-family: "Roboto Serif", serif;
   height: 100vh;
   margin: 0;
   /* sakura caps and pads the body for standalone pages; the docsify
@@ -48,13 +47,11 @@ code,
 kbd,
 var,
 samp {
-  font-family:  monospace;
-  /* font-family: "Roboto Mono", monospace; */
+  font-family: "Roboto Mono", monospace;
 }
 
 footer {
-  font-family:  monospace;
-  /* font-family: "Roboto", monospace; */
+  font-family: "Roboto", monospace;
 }
 
 :focus-visible {
@@ -442,8 +439,7 @@ button.hashtag {
 body .sidebar,
 .sidebar-actions,
 .sidebar-toggle {
-  font-family:  system-ui;
-  /* font-family: "Roboto", sans-serif; */
+  font-family: "Roboto", sans-serif;
 }
 
 body .sidebar {
@@ -487,8 +483,7 @@ body .sidebar {
   cursor: pointer;
   display: flex;
   /* flex: none; */
-  font-family:  monospace;
-  /* font-family: "Roboto Mono", monospace; */
+  font-family: "Roboto Mono", monospace;
   font-size: inherit;
   justify-content: center;
   align-items: center;
