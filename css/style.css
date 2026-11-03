@@ -220,7 +220,8 @@ code {
   font-size: 1rem;
   padding: 0.1rem 0.4rem;
   margin: 0.3rem;
-  background-color: #77777755;
+  /* background-color: #CD853F55; */
+  background-color: color-mix(in srgb, var(--tint-color) 40%, transparent);
   /* opacity: 0.9; */
   border-style: none;
 }
@@ -228,7 +229,8 @@ pre {
   padding: 1rem 1.5rem;
   background: none;
   /* border-radius: 8px; */
-  background-color: #77777733;
+  /* background-color: #CD853F33; */
+  background-color: color-mix(in srgb, var(--tint-color) 40%, transparent);
   opacity: 0.9;
   /* A code block never sits closer to what precedes it than one line of
      body text (line-height × body size). sakura gives pre a zero top
@@ -317,10 +319,11 @@ pre code {
 }
 blockquote {
   /* border-radius: 8px; */
-  background-color: #77777733;
+  /* background-color: #CD853F33; */
+  background-color: color-mix(in srgb, var(--tint-color) 20%, transparent);
   /* sakura's 5px quote border, recolored from its hardcoded teal to the
      theme link ink — same treatment as dl dd below. */
-  border-left: 5px solid var(--link-color);
+  border-left: 5px solid var(--tint-color);
   opacity: 0.9;
   /* font-style: italic; */
   /* padding: 1rem; */
@@ -337,13 +340,15 @@ hr {
   border: 0;
   height: 1px;
   margin: 2em 0;
-  background: #77777777;
+  /* background: #CD853F77; */
+  background: color-mix(in srgb, var(--tint-color) 60%, transparent);
 }
 
 /* sakura's #f1f1f1 row rules are light-theme ink; wear the site hairline. */
 td,
 th {
-  border-bottom: 1px solid #77777777;
+  /* border-bottom: 1px solid #CD853F77; */
+  border-bottom: 1px solid color-mix(in srgb, var(--tint-color) 45%, transparent);
 }
 /* Cell images (Augmenting's figures) shouldn't carry the flow margin. */
 td img,
@@ -477,23 +482,23 @@ body .sidebar {
 .sidebar-actions button,
 .sidebar .search .input-wrap button,
 .sidebar-toggle {
-  background: color-mix(in srgb, var(--body-color) 20%, var(--sidebar-background));
-  color: var(--body-color);
+  background: var(--link-color);
+  color: var(--sidebar-background);
   border: 0;
   cursor: pointer;
   display: flex;
-  /* flex: none; */
   font-family: "Roboto Mono", monospace;
+  font-weight: bold;
   font-size: inherit;
   justify-content: center;
   align-items: center;
   height: 2rem;
   width: 2rem;
+  /* border-radius: 2rem; */
   /* sakura's button padding (5px 10px, border-box) would leave a 12×22
      content box in the fixed 2rem pill — the text overflows it and the
      overflow renders shifted. Zero the padding; flex does the centering. */
-  padding: 0;
-  line-height: 1;
+  padding: 10px 10px 15px 10px;
 }
 
 .sidebar-actions button,
@@ -543,7 +548,8 @@ body .sidebar {
 }
 
 .sidebar .search input[type="search"] {
-  background: #77777744;
+  /* background: #CD853F44; */
+  background: color-mix(in srgb, var(--tint-color) 30%, transparent);
   border: 0;
   color: inherit;
   flex: 1;
@@ -565,7 +571,7 @@ body .sidebar {
 }
 
 .sidebar .search a {
-  color: var(--link-color);
+  color: inherit;
 }
 
 .sidebar .search a:hover {
@@ -573,11 +579,12 @@ body .sidebar {
 }
 
 .sidebar .search a:visited {
-  color: var(--link-visited);
+  color: inherit;
 }
 
 .sidebar .search .matching-post {
-  border-bottom: 1px solid #77777777;
+  /* border-bottom: 1px solid #CD853F77; */
+  border-bottom: 1px solid color-mix(in srgb, var(--tint-color) 45%, transparent);
   padding: 0.75rem 0;
 }
 
@@ -693,7 +700,8 @@ body .sidebar {
 }
 
 .sidebar > footer {
-  color: #777777AA;
+  /* color: #CD853FAA; */
+  color: color-mix(in srgb, var(--tint-color) 60%, transparent);
   flex: none;
   font-size: 0.7rem;
   display: none;
@@ -758,7 +766,8 @@ body .sidebar {
 
   /* Prompt bar at the console bottom; results scroll above the input. */
   body .sidebar .search {
-    border-top: 1px solid #77777744;
+    /* border-top: 1px solid #CD853F44; */
+    border-top: 1px solid  color-mix(in srgb, var(--tint-color) 30%, transparent);
     display: flex;
     flex-direction: column-reverse;
     order: 1;
@@ -785,7 +794,8 @@ body .sidebar {
   body.sidebar-is-open::before {
     backdrop-filter: blur(2px);
     /* background-color: color-mix(in srgb, var(--link-color) 10%, transparent); */
-    background-color: #77777733;
+    /* background-color: #CD853F33; */
+    border-top: 1px solid  color-mix(in srgb, var(--tint-color) 10%, transparent);
     content: "";
     inset: 0;
     position: fixed;
@@ -841,8 +851,8 @@ dl dt {
 }
 
 dl dd {
-  border-left: 2px solid
-    color-mix(in srgb, var(--link-color) 100%, transparent);
+  border-left: 5px solid
+    color-mix(in srgb, var(--tint-color) 100%, transparent);
   margin: 0.15rem 0 0;
   padding-left: 0.75rem;
 }
@@ -879,7 +889,8 @@ dl dd + dt {
 ::-webkit-scrollbar-thumb {
   /* border-radius: 8px; */
   border: 6px solid transparent;
-  background-color: #77777744;
+  /* background-color: #CD853F44; */
+  background-color: color-mix(in srgb, var(--tint-color) 30%, transparent);
 }
 ::-webkit-scrollbar-track {
   background-color: transparent;

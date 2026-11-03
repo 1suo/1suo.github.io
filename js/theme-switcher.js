@@ -3,21 +3,23 @@
   const themes = {
     dark: {
       background: "black",
-      body: "lightsteelblue",
+      body: "antiquewhite",
       color: "gold",
       hover: "yellow",
       visited: "darkkhaki",
       visitedHover: "khaki",
+      tint: "saddlebrown",
       icon: "🌞",
       label: "light",
     },
     light: {
-      background: "lightsteelblue",
+      background: "antiquewhite",
       body: "black",
-      color: "mediumblue",
-      hover: "dodgerblue",
-      visited: "darkorchid",
-      visitedHover: "orchid",
+      color: "red",
+      hover: "tomato",
+      visited: "indianred",
+      visitedHover: "lightcoral",
+      tint: "peru",
       icon: "🌚",
       label: "dark",
     },
@@ -44,6 +46,7 @@
     root.style.setProperty("--link-hover", values.hover);
     root.style.setProperty("--link-visited", values.visited);
     root.style.setProperty("--link-visited-hover", values.visitedHover);
+    root.style.setProperty("--tint-color", values.tint);
 
     if (button) {
       button.textContent = values.icon;
