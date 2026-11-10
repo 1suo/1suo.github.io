@@ -687,9 +687,11 @@ body .sidebar {
    section links (a.section-link) are excluded. */
 .sidebar .sidebar-nav li.active > a:not(.section-link),
 .sidebar .sidebar-nav li:has(.app-sub-sidebar .active) > a:not(.section-link) {
-  background: color-mix(in srgb, currentColor 15%, transparent);
+  /* background: color-mix(in srgb, currentColor 15%, transparent); */
+  /* background: var(--accent-color); */
   /* border-radius: 8px; */
   color: var(--link-color);
+  font-weight: bold;
   display: inline-block;
   margin: -0.15rem -0.5rem;
   padding: 0.15rem 0.5rem;

@@ -9,6 +9,7 @@
       visited: "darkkhaki",
       visitedHover: "khaki",
       tint: "saddlebrown",
+      accent: "springgreen",
       icon: "🌞",
       label: "light",
     },
@@ -20,6 +21,7 @@
       visited: "indianred",
       visitedHover: "lightcoral",
       tint: "peru",
+      accent: "blueviolet",
       icon: "🌚",
       label: "dark",
     },
@@ -47,6 +49,7 @@
     root.style.setProperty("--link-visited", values.visited);
     root.style.setProperty("--link-visited-hover", values.visitedHover);
     root.style.setProperty("--tint-color", values.tint);
+    root.style.setProperty("--accent-color", values.accent);
 
     if (button) {
       button.textContent = values.icon;

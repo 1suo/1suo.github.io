@@ -13,6 +13,10 @@ These are the elements outlined in John Gruber’s original design document. All
 # H1
 ## H2
 ### H3
+#### H4
+##### H5
+###### H6
+
 
 ### Bold
 
@@ -68,7 +72,7 @@ These elements extend the basic syntax by adding additional features. Not all Ma
 
 ### Fenced Code Block
 
-```
+```json
 {
   "firstName": "John",
   "lastName": "Smith",
